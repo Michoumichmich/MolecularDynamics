@@ -128,8 +128,6 @@ std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(sycl::queue &q, c
     auto kernel_on_multiple_size = [&]<int multiple_size>() {
         if (config.n_symetries == 1) {
             return internal_simulator_on_sycl<T, multiple_size, 1>(q, work_group_size, particules, forces, config, evt);
-        } else if (config.n_symetries == 3) {
-            return internal_simulator_on_sycl<T, multiple_size, 3>(q, work_group_size, particules, forces, config, evt);
         } else if (config.n_symetries == 27) {
             return internal_simulator_on_sycl<T, multiple_size, 27>(q, work_group_size, particules, forces, config, evt);
         } else if (config.n_symetries == 125) {

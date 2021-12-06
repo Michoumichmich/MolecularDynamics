@@ -7,8 +7,7 @@
 
 using U = double;
 
-static const simulation_configuration<U> config{.use_cutoff=false, .n_symetries=1};
-
+static const simulation_configuration<U> config{.use_cutoff=false, .n_symetries=27};
 
 template<typename T, class ForwardIt>
 static inline void rand_fill_on_host(ForwardIt first, ForwardIt last, T min, T max) {
@@ -35,9 +34,14 @@ void lennard_jones_sequential(benchmark::State &state) {
     U last_energy = 0;
     run_simulation_sequential(vec, config); // preheat ?
     for (auto _: state) {
+        auto start = std::chrono::high_resolution_clock::now();
         auto[field, sums, energy] = run_simulation_sequential(vec, config);
+        auto end = std::chrono::high_resolution_clock::now();
+
         processed_items += size * size * config.n_symetries;
         last_energy = energy;
+        auto duration = (std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()) / 1e9;
+        state.SetIterationTime(duration);
     }
     state.SetLabel(std::string(std::to_string(last_energy)));
     state.SetItemsProcessed(static_cast<int64_t>(processed_items));
@@ -55,8 +59,13 @@ void lennard_jones_sycl(benchmark::State &state) {
     size_t processed_items = 0;
     auto[summed_forces, energy] =  run_simulation_sycl_device_memory(q, particules_device, forces_device, config);
     for (auto _: state) {
+        auto start = std::chrono::high_resolution_clock::now();
         run_simulation_sycl_device_memory(q, particules_device, forces_device, config);
+        auto end = std::chrono::high_resolution_clock::now();
+
         processed_items += size * size * config.n_symetries;
+        auto duration = (std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()) / 1e9;
+        state.SetIterationTime(duration);
     }
 
     state.SetLabel(std::string(std::to_string(energy)));
@@ -66,8 +75,13 @@ void lennard_jones_sycl(benchmark::State &state) {
     sycl::free(forces_device.data(), q);
 }
 
+#ifdef SYCL_IMPLEMENTATION_HIPSYCL
+BENCHMARK(lennard_jones_sycl)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 16384)->UseManualTime();
+BENCHMARK(lennard_jones_sequential)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 16384)->UseManualTime();
+#else
+BENCHMARK(lennard_jones_sycl)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 1024 * 1048576)->UseManualTime();
+BENCHMARK(lennard_jones_sequential)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 1048576)->UseManualTime();
+#endif
 
-BENCHMARK(lennard_jones_sycl)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 1024 * 1048576);
-BENCHMARK(lennard_jones_sequential)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 1048576);
 
 BENCHMARK_MAIN();

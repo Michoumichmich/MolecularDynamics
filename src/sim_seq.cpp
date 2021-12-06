@@ -32,8 +32,6 @@ template<typename T>
 std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sequential(const std::vector<coordinate<T>> &particules, simulation_configuration<T> config) {
     if (config.n_symetries == 1) {
         return internal_simulator_sequential<T, 1>(particules, config);
-    } else if (config.n_symetries == 3) {
-        return internal_simulator_sequential<T, 3>(particules, config);
     } else if (config.n_symetries == 27) {
         return internal_simulator_sequential<T, 27>(particules, config);
     } else if (config.n_symetries == 125) {

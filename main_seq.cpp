@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     run_example(coordinates, {.use_cutoff = true, .n_symetries = 27});
     run_example(coordinates, {.use_cutoff = true, .n_symetries = 27, .L_=50});
     run_example(coordinates, {.use_cutoff = false, .n_symetries = 27, .L_=50});
-    run_example(coordinates, {.use_cutoff = false, .n_symetries = 125, .L_=30});
+    run_example(coordinates, {.use_cutoff = false, .n_symetries = 125, .L_=50});
 
     auto coordinates_float = coordinate_vector_cast<float>(coordinates);
     run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 1});
@@ -28,6 +28,6 @@ int main(int argc, char **argv) {
     run_example(coordinates_float, {.use_cutoff = true, .n_symetries = 27});
     run_example(coordinates_float, {.use_cutoff = true, .n_symetries = 27, .L_=50});
     run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 27, .L_=50});
-    run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 125, .L_=30});
+    run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 125, .L_=50});
 
 }

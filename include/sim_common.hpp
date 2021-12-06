@@ -53,11 +53,9 @@ constexpr auto icbrt(unsigned x) {
 
 template<int N, typename T>
 static constexpr std::array<coordinate<T>, N> get_symetries() {
-    static_assert(N == 1 || N == 3 || N == 27 || N == 125);
+    static_assert(N == 1 || N == 27 || N == 125);
     if constexpr(N == 1) {
         return std::array<coordinate<T>, 1>{coordinate<T>{0, 0, 0}};
-    } else if constexpr(N == 3) {
-        return std::array<coordinate<T>, 3>{coordinate<T>{0, 0, 0}, coordinate<T>{0, 1, 0}, coordinate<T>{0, -1, 0}};
     } else {
         std::array<coordinate<T>, N> out;
         constexpr int n = icbrt(N);
