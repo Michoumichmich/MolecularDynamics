@@ -64,12 +64,12 @@ static inline auto internal_simulator_on_sycl(                                  
 
                          /* Setting up local variables */
                          const auto this_work_item_particule = is_active_work_item ? particules[global_id] : coordinate<T>{};
-                         const auto symetries = get_symetries<n_sym, T>();
+                         static const auto symetries = get_symetries<n_sym>();
                          /* Local reducers */
                          auto this_particule_energy = T{};
                          auto this_particule_force = coordinate<T>{0, 0, 0};
 
-                         /* Loop over 'how many tiles we need'. Each tile being a sequence of atoms loaded into local memory */
+                         /* Loop over 'how many tiles we need'. Each tile being a sequence of particles loaded into local memory */
                          for (uint32_t tile_id = 0U; tile_id < group_count; ++tile_id) {
                              const uint32_t global_particule_idx = tile_id * group_size + local_id;
                              const bool is_active_tile = [&]() {
@@ -105,7 +105,9 @@ static inline auto internal_simulator_on_sycl(                                  
                                          continue; /* We eliminate the case where the two particles are the same */
 
                                      /* Getting the other particle 'j' and it's perturbation */
-                                     const auto other_particule = config.L_ * sym + particules_tile[j];
+                                     const coordinate<T> delta{sym.x() * config.L_, sym.y() * config.L_, sym.z() * config.L_};
+
+                                     const auto other_particule = delta + particules_tile[j];
                                      //const T squared_distance = sycl::dot(this_work_item_particule, other_particule);//
                                      const T squared_distance = compute_squared_distance(this_work_item_particule, other_particule);
                                      /* If kernel uses radius cutoff, known at compile-time */
@@ -121,7 +123,7 @@ static inline auto internal_simulator_on_sycl(                                  
                          }
 
                          if (!is_active_work_item) return;
-                         forces[global_id] = this_particule_force * -48 * config.epsilon_star_;
+                         forces[global_id] = this_particule_force * (-48) * config.epsilon_star_;
                          reducer_energy.combine(2 * config.epsilon_star_ * this_particule_energy);   //We divided because the energies would be counted twice otherwise
                          reducer_x.combine(forces[global_id].x());
                          reducer_y.combine(forces[global_id].y());

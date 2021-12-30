@@ -49,19 +49,17 @@ constexpr auto icbrt(unsigned x) {
 }
 
 
-template<int N, typename T> static constexpr std::array<coordinate<T>, N> get_symetries() {
+template<int N> static constexpr std::array<sycl::vec<int, 3U>, N> get_symetries() {
     static_assert(N == 1 || N == 27 || N == 125);
     if constexpr (N == 1) {
-        return std::array<coordinate<T>, 1>{coordinate<T>{0, 0, 0}};
+        return std::array<sycl::vec<int, 3U>, 1>{sycl::vec<int, 3U>{0, 0, 0}};
     } else {
-        std::array<coordinate<T>, N> out;
+        std::array<sycl::vec<int, 3U>, N> out;
         constexpr int n = icbrt(N);
         constexpr int delta = n / 2;
         for (int i = -delta; i <= delta; ++i) {
             for (int j = -delta; j <= delta; ++j) {
-                for (int k = -delta; k <= delta; ++k) {
-                    out[n * n * (i + delta) + n * (j + delta) + (k + delta)] = coordinate<T>(static_cast<T>(i), static_cast<T>(j), static_cast<T>(k));
-                }
+                for (int k = -delta; k <= delta; ++k) { out[n * n * (i + delta) + n * (j + delta) + (k + delta)] = sycl::vec<int, 3U>(i, j, k); }
             }
         }
         return out;
@@ -107,7 +105,7 @@ constexpr auto strictly_lower_to_linear(int row, int column) {
     // assert row < column
     return (row * (row - 1)) / 2 + column;
 }
-
+/*
 constexpr auto linear_to_strictly_lower(int index) {
     if (std::is_constant_evaluated()) {
         int row = (int) ((1 + isqrt(8 * index + 1)) / 2);
@@ -132,3 +130,4 @@ static_assert(check_strictly_linear(1, 0));
 static_assert(check_strictly_linear(2, 0));
 static_assert(check_strictly_linear(2, 1));
 static_assert(check_strictly_linear(3, 2));
+*/

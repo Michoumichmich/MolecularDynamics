@@ -9,9 +9,10 @@ template<typename T, int n_sym> static inline auto internal_simulator_sequential
         auto this_particule_energy = T{};
         const auto this_particule = particules[i];
         for (auto j = 0U; j < particules.size(); ++j) {
-            for (const auto& sym: get_symetries<n_sym, T>()) {
+            for (const auto& sym: get_symetries<n_sym>()) {
                 if (i == j && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) continue;
-                const auto other_particule = config.L_ * sym + particules[j];
+                const coordinate<T> delta{sym.x() * config.L_, sym.y() * config.L_, sym.z() * config.L_};
+                const auto other_particule = delta + particules[j];
                 T squared_distance = compute_squared_distance(this_particule, other_particule);
                 if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
                 T frac_pow_2 = config.r_star_ * config.r_star_ / squared_distance;
