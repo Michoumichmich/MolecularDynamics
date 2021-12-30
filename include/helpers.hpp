@@ -1,13 +1,12 @@
 #pragma once
 
-#include <vector>
-#include <string>
 #include <fstream>
 #include <iostream>
 #include <sim_common.hpp>
+#include <string>
+#include <vector>
 
-template<typename T, typename Other>
-static inline std::vector<coordinate<T>> coordinate_vector_cast(const std::vector<coordinate<Other>> &in) {
+template<typename T, typename Other> static inline std::vector<coordinate<T>> coordinate_vector_cast(const std::vector<coordinate<Other>>& in) {
     std::vector<coordinate<T>> out(in.size());
     for (unsigned int i = 0; i < in.size(); ++i) {
         coordinate<T> c;
@@ -19,7 +18,7 @@ static inline std::vector<coordinate<T>> coordinate_vector_cast(const std::vecto
     return out;
 }
 
-static inline std::vector<coordinate<double>> parse_particule_file(std::string &&filename) {
+static inline std::vector<coordinate<double>> parse_particule_file(std::string&& filename) {
     auto fs = std::ifstream(filename);
     if (!fs.is_open()) throw std::runtime_error("File not found");
     auto comment = std::string{};

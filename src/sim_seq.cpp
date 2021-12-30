@@ -1,7 +1,6 @@
 #include <sim_seq.h>
 
-template<typename T, int n_sym>
-static inline auto internal_simulator_sequential(const std::vector<coordinate<T>> &particules, simulation_configuration<T> config) {
+template<typename T, int n_sym> static inline auto internal_simulator_sequential(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config) {
     auto forces = std::vector<coordinate<T>>(particules.size());
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
@@ -10,7 +9,7 @@ static inline auto internal_simulator_sequential(const std::vector<coordinate<T>
         auto this_particule_energy = T{};
         const auto this_particule = particules[i];
         for (auto j = 0U; j < particules.size(); ++j) {
-            for (const auto &sym: get_symetries<n_sym, T>()) {
+            for (const auto& sym: get_symetries<n_sym, T>()) {
                 if (i == j && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) continue;
                 const auto other_particule = config.L_ * sym + particules[j];
                 T squared_distance = compute_squared_distance(this_particule, other_particule);
@@ -22,14 +21,14 @@ static inline auto internal_simulator_sequential(const std::vector<coordinate<T>
                 forces[i] += (this_particule - other_particule) * force_prefactor;
             }
         }
-        energy += 2 * config.epsilon_star_ * this_particule_energy; //We divided because the energies would be counted twice otherwise
+        energy += 2 * config.epsilon_star_ * this_particule_energy;   //We divided because the energies would be counted twice otherwise
         summed_forces += forces[i] * (-48) * config.epsilon_star_;
     }
     return std::tuple(forces, summed_forces, energy);
 }
 
 template<typename T>
-std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sequential(const std::vector<coordinate<T>> &particules, simulation_configuration<T> config) {
+std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sequential(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config) {
     if (config.n_symetries == 1) {
         return internal_simulator_sequential<T, 1>(particules, config);
     } else if (config.n_symetries == 27) {
@@ -41,11 +40,15 @@ std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sequenti
     }
 }
 
-template std::tuple<std::vector<coordinate<sycl::half>>, coordinate<sycl::half>, sycl::half>
-run_simulation_sequential(const std::vector<coordinate<sycl::half>> &particules, simulation_configuration<sycl::half> config);
+#ifdef BUILD_HALF
+template std::tuple<std::vector<coordinate<sycl::half>>, coordinate<sycl::half>, sycl::half>   //
+run_simulation_sequential(const std::vector<coordinate<sycl::half>>& particules, simulation_configuration<sycl::half> config);
+#endif
 
-template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>
-run_simulation_sequential(const std::vector<coordinate<float>> &particules, simulation_configuration<float> config);
+#ifdef BUILD_FLOAT
+template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   //
+run_simulation_sequential(const std::vector<coordinate<float>>& particules, simulation_configuration<float> config);
+#endif
 
-template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>
-run_simulation_sequential(const std::vector<coordinate<double>> &particules, simulation_configuration<double> config);
+template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
+run_simulation_sequential(const std::vector<coordinate<double>>& particules, simulation_configuration<double> config);

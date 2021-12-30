@@ -1,16 +1,14 @@
 #pragma once
 
-#include <sycl/sycl.hpp>
-#include <vector>
 #include <array>
 #include <cmath>
+#include <sycl/sycl.hpp>
+#include <vector>
 
 /* Structure de vecteur */
-template<typename T>
-using coordinate = sycl::vec<T, 3U>;
+template<typename T> using coordinate = sycl::vec<T, 3U>;
 
-template<typename T>
-struct simulation_configuration {
+template<typename T> struct simulation_configuration {
     bool use_cutoff = true;
     T r_cut_ = static_cast<T>(10);
     int n_symetries = 27;
@@ -18,9 +16,9 @@ struct simulation_configuration {
     T r_star_ = static_cast<T>(3);
     T epsilon_star_ = static_cast<T>(0.2);
 
-    friend std::ostream &operator<<(std::ostream &os, simulation_configuration config) {
+    friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
         constexpr auto type_to_string = []() -> std::string {
-            if constexpr(std::is_same_v<T, sycl::half>) {
+            if constexpr (std::is_same_v<T, sycl::half>) {
                 return "sycl::half";
             } else if constexpr (std::is_same_v<T, float>) {
                 return "float";
@@ -31,10 +29,10 @@ struct simulation_configuration {
             }
         };
 
-        os << "Cutoff: " << config.use_cutoff << ", r_cut: " << config.r_cut_ << ", n_symetries: " << config.n_symetries << ", box_width: " << config.L_ << ", type: " << type_to_string();
+        os << "Cutoff: " << config.use_cutoff << ", r_cut: " << config.r_cut_ << ", n_symetries: " << config.n_symetries << ", box_width: " << config.L_
+           << ", type: " << type_to_string();
         return os;
     }
-
 };
 
 constexpr auto icbrt(unsigned x) {
@@ -51,10 +49,9 @@ constexpr auto icbrt(unsigned x) {
 }
 
 
-template<int N, typename T>
-static constexpr std::array<coordinate<T>, N> get_symetries() {
+template<int N, typename T> static constexpr std::array<coordinate<T>, N> get_symetries() {
     static_assert(N == 1 || N == 27 || N == 125);
-    if constexpr(N == 1) {
+    if constexpr (N == 1) {
         return std::array<coordinate<T>, 1>{coordinate<T>{0, 0, 0}};
     } else {
         std::array<coordinate<T>, N> out;
@@ -69,24 +66,21 @@ static constexpr std::array<coordinate<T>, N> get_symetries() {
         }
         return out;
     }
-
 }
 
 
-template<typename T>
-constexpr T compute_squared_distance(const coordinate<T> &lhs, const coordinate<T> &rhs) {
+template<typename T> constexpr T compute_squared_distance(const coordinate<T>& lhs, const coordinate<T>& rhs) {
     return (lhs[0U] - rhs[0U]) * (lhs[0U] - rhs[0U]) + (lhs[1U] - rhs[1U]) * (lhs[1U] - rhs[1U]) + (lhs[2U] - rhs[2U]) * (lhs[2U] - rhs[2U]);
 }
 
-template<int N, typename T>
-constexpr T integral_power_helper(const T &y, const T &x) {
-    if constexpr(N < 0) {
+template<int N, typename T> constexpr T integral_power_helper(const T& y, const T& x) {
+    if constexpr (N < 0) {
         return integral_power_helper<-N, T>(y, T(1) / x);
     } else if constexpr (N == 0) {
         return y;
     } else if constexpr (N == 1) {
         return x * y;
-    } else if constexpr(N % 2 == 0) {
+    } else if constexpr (N % 2 == 0) {
         return integral_power_helper<N / 2, T>(y, x * x);
     } else {
         return integral_power_helper<(N - 1) / 2, T>(y * x, x * x);
@@ -94,8 +88,7 @@ constexpr T integral_power_helper(const T &y, const T &x) {
 }
 
 
-template<int N, typename T>
-constexpr T integral_power(const T &v) {
+template<int N, typename T> constexpr T integral_power(const T& v) {
     static_assert(integral_power_helper<0>(1, 0) == 1);
     static_assert(integral_power_helper<1>(1, 0) == 0);
     static_assert(integral_power_helper<0>(1, 5) == 1);
@@ -106,13 +99,9 @@ constexpr T integral_power(const T &v) {
 }
 
 
-constexpr size_t isqrt_impl(size_t sq, size_t dlt, size_t value) {
-    return sq <= value ? isqrt_impl(sq + dlt, dlt + 2, value) : (dlt >> 1) - 1;
-}
+constexpr size_t isqrt_impl(size_t sq, size_t dlt, size_t value) { return sq <= value ? isqrt_impl(sq + dlt, dlt + 2, value) : (dlt >> 1) - 1; }
 
-constexpr size_t isqrt(size_t value) {
-    return isqrt_impl(1, 3, value);
-}
+constexpr size_t isqrt(size_t value) { return isqrt_impl(1, 3, value); }
 
 constexpr auto strictly_lower_to_linear(int row, int column) {
     // assert row < column
@@ -133,7 +122,7 @@ constexpr auto linear_to_strictly_lower(int index) {
 
 
 constexpr auto check_strictly_linear(int i, int j) {
-    auto[ii, jj] = linear_to_strictly_lower(strictly_lower_to_linear(i, j));
+    auto [ii, jj] = linear_to_strictly_lower(strictly_lower_to_linear(i, j));
     return ii == i && jj == j;
 }
 
