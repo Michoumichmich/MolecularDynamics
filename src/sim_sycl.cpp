@@ -121,7 +121,6 @@ public:
         reducer_y.combine(forces_field_[global_id].y());
         reducer_z.combine(forces_field_[global_id].z());
     }
-#pragma clang diagnostic pop
 };
 
 template<typename T, bool multiple_size, int n_sym>

@@ -9,7 +9,7 @@ set(WARNINGS "-Wall -Wextra -Wno-assume -Wno-unused-command-line-argument")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS} -Wno-tautological-constant-compare")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -Og -g3 ${WARNINGS}")
 
-set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Xcuda-ptxas -v)
+set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda,spir64_x86_64,spir64-fpga -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Xcuda-ptxas -v)
 # -fcuda-approx-transcendentals -ffp-contract=fast -fcuda-flush-denormals-to-zero -Xsycl-target-backend=spir64_x86_64 --march=avx
 #set(DPCPP_FLAGS -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfx902 -fsycl-id-queries-fit-in-int)
 #set(DPCPP_FLAGS -fsycl-targets=spir64 -fsycl-id-queries-fit-in-int)
