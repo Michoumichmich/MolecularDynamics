@@ -115,6 +115,10 @@ static inline auto internal_simulator_on_sycl(                                  
                                      /* If kernel uses radius cutoff, known at compile-time */
                                      if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
 
+                                     if constexpr (std::is_same_v<T, sycl::half>) {
+                                         if (squared_distance == T{}) continue;
+                                     }
+
                                      const T frac_pow_2 = config.r_star_ * config.r_star_ / squared_distance;
                                      const T frac_pow_6 = integral_power<3>(frac_pow_2);
                                      this_particule_energy += integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
