@@ -18,7 +18,111 @@ template<typename T> static inline void prefetch_constant(const T* ptr) {
 #endif
 }
 
-template<typename T, bool multiple_size, int n_sym> class leenard_jones_kernel;
+
+template<typename T, bool multiple_size, int n_sym> class leenard_jones_kernel {
+private:
+    const simulation_configuration<T> config_;
+    const std::span<coordinate<T>> particules_;
+    std::span<coordinate<T>> forces_field_;
+    sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local> particules_tile_;
+
+public:
+    leenard_jones_kernel(                                 //
+            const simulation_configuration<T>& config,    //
+            const std::span<coordinate<T>>& particules,   //
+            std::span<coordinate<T>>& forces,             //
+            sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local>& acc)
+        : config_(config), particules_(particules), forces_field_(forces), particules_tile_(acc) {}
+
+
+    inline void operator()(const sycl::nd_item<1>& item, auto& reducer_x, auto& reducer_y, auto& reducer_z, auto& reducer_energy) {
+        /* Getting space coordinates */
+        const uint32_t global_id = item.get_global_linear_id();
+        const uint32_t local_id = item.get_local_linear_id();
+        const uint32_t group_count = item.get_group_range().size();
+        const uint32_t group_size = item.get_local_range().size();
+
+        /* Whether the current work item takes part in the computation or not. We cannot return as it needs to be present for further barriers. */
+        const bool is_active_work_item = [&]() {
+            if constexpr (multiple_size) return true;
+            else {
+                return global_id < particules_.size();
+            }
+        }();
+
+        /* Setting up local variables */
+        const auto this_work_item_particule = is_active_work_item ? particules_[global_id] : coordinate<T>{};
+        static const auto symetries = get_symetries<n_sym>();
+        /* Local reducers */
+        auto this_particule_energy = T{};
+        auto this_particule_force = coordinate<T>{0, 0, 0};
+
+        /* Loop over 'how many tiles we need'. Each tile being a sequence of particles loaded into local memory */
+        for (uint32_t tile_id = 0U; tile_id < group_count; ++tile_id) {
+            const uint32_t global_particule_idx = tile_id * group_size + local_id;
+            const bool is_active_tile = [&]() {
+                if constexpr (multiple_size) return true;
+                else {
+                    return global_particule_idx < particules_.size();
+                }
+            }();
+            const uint32_t this_tile_size = [&]() {
+                if constexpr (multiple_size) {
+                    return group_size;
+                } else {
+                    return std::min<uint32_t>(group_size, particules_.size() - tile_id * group_size);
+                }
+            }();
+
+            /* Loading data (as tiles) into local_memory */
+            const auto new_particule = is_active_tile ? particules_[global_particule_idx] : coordinate<T>{};
+            sycl::group_barrier(item.get_group());
+            particules_tile_[local_id] = new_particule;
+            sycl::group_barrier(item.get_group());
+
+            if (!is_active_work_item) continue; /* Current not considered as we're ouf of range */
+            prefetch_constant(particules_.data() + global_particule_idx + group_size);
+
+            /* Doing the computation between our own particule and the ones from the tile */
+            for (uint32_t j = 0U; j < this_tile_size; ++j) {
+#if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
+#    pragma unroll n_sym
+#endif
+                for (const auto& sym: symetries) {
+                    if (global_id == j + tile_id * group_size && sym.x() == 0 && sym.y() == 0 && sym.z() == 0)
+                        continue; /* We eliminate the case where the two particles are the same */
+
+                    /* Getting the other particle 'j' and it's perturbation */
+                    const coordinate<T> delta{sym.x() * config_.L_, sym.y() * config_.L_, sym.z() * config_.L_};
+
+                    const auto other_particule = delta + particules_tile_[j];
+                    //const T squared_distance = sycl::dot(this_work_item_particule, other_particule);//
+                    const T squared_distance = compute_squared_distance(this_work_item_particule, other_particule);
+                    /* If kernel uses radius cutoff, known at compile-time */
+                    if (config_.use_cutoff && squared_distance > integral_power<2>(config_.r_cut_)) continue;
+
+                    if constexpr (std::is_same_v<T, sycl::half>) {
+                        if (squared_distance == T{}) continue;
+                    }
+
+                    const T frac_pow_2 = config_.r_star_ * config_.r_star_ / squared_distance;
+                    const T frac_pow_6 = integral_power<3>(frac_pow_2);
+                    this_particule_energy += integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
+                    const T force_prefactor = (frac_pow_6 - 1) * frac_pow_6 * frac_pow_2;
+                    this_particule_force += (this_work_item_particule - other_particule) * force_prefactor;
+                }
+            }
+        }
+
+        if (!is_active_work_item) return;
+        forces_field_[global_id] = this_particule_force * (-48) * config_.epsilon_star_;
+        reducer_energy.combine(2 * config_.epsilon_star_ * this_particule_energy);   //We divided because the energies would be counted twice otherwise
+        reducer_x.combine(forces_field_[global_id].x());
+        reducer_y.combine(forces_field_[global_id].y());
+        reducer_z.combine(forces_field_[global_id].z());
+    }
+#pragma clang diagnostic pop
+};
 
 template<typename T, bool multiple_size, int n_sym>
 static inline auto internal_simulator_on_sycl(                                        //
@@ -46,95 +150,8 @@ static inline auto internal_simulator_on_sycl(                                  
              auto reduction_energy = sycl::reduction(energy_reduction_buffer, cgh, sycl::plus<>{});
 #endif
              auto particules_tile = sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local>(sycl::range<1>(work_group_size), cgh);
-             cgh.parallel_for<leenard_jones_kernel<T, multiple_size, n_sym>>(
-                     compute_range_size(particules.size(), work_group_size), reduction_x, reduction_y, reduction_z, reduction_energy,
-                     [particules, particules_tile, forces, config](const sycl::nd_item<1>& item, auto& reducer_x, auto& reducer_y, auto& reducer_z, auto& reducer_energy) {
-                         /* Getting space coordinates */
-                         const uint32_t global_id = item.get_global_linear_id();
-                         const uint32_t local_id = item.get_local_linear_id();
-                         const uint32_t group_count = item.get_group_range().size();
-                         const uint32_t group_size = item.get_local_range().size();
-
-                         /* Whether the current work item takes part in the computation or not.
-                         * We cannot return as it needs to be present for further barriers. */
-                         const bool is_active_work_item = [&]() {
-                             if constexpr (multiple_size) return true;
-                             else {
-                                 return global_id < particules.size();
-                             }
-                         }();
-
-                         /* Setting up local variables */
-                         const auto this_work_item_particule = is_active_work_item ? particules[global_id] : coordinate<T>{};
-                         static const auto symetries = get_symetries<n_sym>();
-                         /* Local reducers */
-                         auto this_particule_energy = T{};
-                         auto this_particule_force = coordinate<T>{0, 0, 0};
-
-                         /* Loop over 'how many tiles we need'. Each tile being a sequence of particles loaded into local memory */
-                         for (uint32_t tile_id = 0U; tile_id < group_count; ++tile_id) {
-                             const uint32_t global_particule_idx = tile_id * group_size + local_id;
-                             const bool is_active_tile = [&]() {
-                                 if constexpr (multiple_size) return true;
-                                 else {
-                                     return global_id < particules.size();
-                                 }
-                             }();
-                             const uint32_t this_tile_size = [&]() {
-                                 if constexpr (multiple_size) {
-                                     return group_size;
-                                 } else {
-                                     return std::min<uint32_t>(group_size, particules.size() - tile_id * group_size);
-                                 }
-                             }();
-
-                             /* Loading data (as tiles) into local_memory */
-                             const auto new_particule = is_active_tile ? particules[global_particule_idx] : coordinate<T>{};
-                             sycl::group_barrier(item.get_group());
-                             particules_tile[local_id] = new_particule;
-                             sycl::group_barrier(item.get_group());
-
-                             if (!is_active_work_item) continue; /* Current not considered as we're ouf of range */
-                             prefetch_constant(particules.data() + global_particule_idx + group_size);
-
-                             /* Doing the computation between our own particule and the ones from the tile */
-                             for (uint32_t j = 0U; j < this_tile_size; ++j) {
-#if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
-#    pragma unroll n_sym
-#endif
-                                 for (const auto& sym: symetries) {
-                                     if (global_id == j + tile_id * group_size && sym.x() == 0 && sym.y() == 0 && sym.z() == 0)
-                                         continue; /* We eliminate the case where the two particles are the same */
-
-                                     /* Getting the other particle 'j' and it's perturbation */
-                                     const coordinate<T> delta{sym.x() * config.L_, sym.y() * config.L_, sym.z() * config.L_};
-
-                                     const auto other_particule = delta + particules_tile[j];
-                                     //const T squared_distance = sycl::dot(this_work_item_particule, other_particule);//
-                                     const T squared_distance = compute_squared_distance(this_work_item_particule, other_particule);
-                                     /* If kernel uses radius cutoff, known at compile-time */
-                                     if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
-
-                                     if constexpr (std::is_same_v<T, sycl::half>) {
-                                         if (squared_distance == T{}) continue;
-                                     }
-
-                                     const T frac_pow_2 = config.r_star_ * config.r_star_ / squared_distance;
-                                     const T frac_pow_6 = integral_power<3>(frac_pow_2);
-                                     this_particule_energy += integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
-                                     const T force_prefactor = (frac_pow_6 - 1) * frac_pow_6 * frac_pow_2;
-                                     this_particule_force += (this_work_item_particule - other_particule) * force_prefactor;
-                                 }
-                             }
-                         }
-
-                         if (!is_active_work_item) return;
-                         forces[global_id] = this_particule_force * (-48) * config.epsilon_star_;
-                         reducer_energy.combine(2 * config.epsilon_star_ * this_particule_energy);   //We divided because the energies would be counted twice otherwise
-                         reducer_x.combine(forces[global_id].x());
-                         reducer_y.combine(forces[global_id].y());
-                         reducer_z.combine(forces[global_id].z());
-                     });
+             auto kernel = leenard_jones_kernel<T, multiple_size, n_sym>(config, particules, forces, particules_tile);
+             cgh.parallel_for(compute_range_size(particules.size(), work_group_size), reduction_x, reduction_y, reduction_z, reduction_energy, kernel);
          }).wait_and_throw();
     }
     return std::tuple(summed_forces, energy);
