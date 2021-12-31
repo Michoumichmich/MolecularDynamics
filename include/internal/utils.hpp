@@ -82,6 +82,9 @@ template<typename T> static inline T generate_random_value(T min, T max) {
     if constexpr (std::is_integral<T>::value) {
         std::uniform_int_distribution<T> distribution(min, max);
         return distribution(engine);
+    } else if constexpr (std::is_same_v<T, sycl::half>) {
+        std::uniform_real_distribution<float> distribution(static_cast<float>(min), static_cast<float>(max));
+        return static_cast<sycl::half>(distribution(engine));
     } else {
         std::uniform_real_distribution<T> distribution(min, max);
         return distribution(engine);

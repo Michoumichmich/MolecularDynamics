@@ -14,7 +14,7 @@ template<typename T> static inline std::vector<coordinate<T>> generate_particule
 template<typename T> void lennard_jones_sequential(benchmark::State& state) {
     const simulation_configuration<T> config{.use_cutoff = false, .n_symetries = 27};
     const auto size = static_cast<size_t>(state.range(0));
-    const auto vec = generate_particules(size, 10 * config.r_star_);
+    const auto vec = generate_particules<T>(size, 10 * config.r_star_);
 
     run_simulation_sequential(vec, config);   // preheat
     for (auto _: state) {
@@ -30,7 +30,7 @@ template<typename T> void lennard_jones_sequential(benchmark::State& state) {
 template<typename T> void lennard_jones_sycl(benchmark::State& state) {
     const simulation_configuration<T> config{.use_cutoff = false, .n_symetries = 27};
     const auto size = static_cast<size_t>(state.range(0));
-    const auto particules_host = generate_particules(size, 10 * config.r_star_);
+    const auto particules_host = generate_particules<T>(size, 10 * config.r_star_);
 
     sycl::queue q{sycl::default_selector{}};
     auto particules_device = std::span(sycl::malloc_device<coordinate<T>>(particules_host.size(), q), particules_host.size());
