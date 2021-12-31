@@ -1,8 +1,6 @@
 #pragma once
 
-#include "sim_common.hpp"
-#include <tuple>
-#include <vector>
+#include <internal/sim_common.hpp>
 
 /**
  *
@@ -25,5 +23,7 @@ extern template std::tuple<std::vector<coordinate<float>>, coordinate<float>, fl
 run_simulation_sequential(const std::vector<coordinate<float>>& particules, simulation_configuration<float> config);
 #endif
 
+#ifdef BUILD_DOUBLE
 extern template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
 run_simulation_sequential(const std::vector<coordinate<double>>& particules, simulation_configuration<double> config);
+#endif

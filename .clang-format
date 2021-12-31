@@ -32,11 +32,10 @@ BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
-ColumnLimit: 170
+ColumnLimit: 180
 CompactNamespaces: true
 ContinuationIndentWidth: 8
 IndentCaseLabels: true
-IndentPPDirectives: None
 IndentWidth: 4
 KeepEmptyLinesAtTheStartOfBlocks: true
 MaxEmptyLinesToKeep: 2
@@ -64,5 +63,5 @@ SpacesInSquareBrackets: false
 TabWidth: 4
 UseTab: Never
 
-
+IndentPPDirectives: AfterHash
 Cpp11BracedListStyle: true

@@ -16,9 +16,13 @@ set(DPCPP_FLAGS -fsycl -fsycl-targets=nvptx64-nvidia-cuda -fsycl-id-queries-fit-
 
 include(cmake/FindSYCL.cmake)
 
+option(BUILD_DOUBLE "Build with double backend" ON)
 option(BUILD_FLOAT "Build with float backend" ON)
-option(BUILD_HALF "Build with half backend" OFF)
+option(BUILD_HALF "Build with half backend" ON)
 
+if (BUILD_DOUBLE)
+    add_definitions(-DBUILD_DOUBLE)
+endif ()
 if (BUILD_FLOAT)
     add_definitions(-DBUILD_FLOAT)
 endif ()
@@ -30,7 +34,7 @@ endif ()
 include_directories(include)
 
 # Sequential library
-add_library(ISM_SEQ_backend SHARED src/sim_seq.cpp include/sim_common.hpp include/sim_seq.h)
+add_library(ISM_SEQ_backend SHARED src/sim_seq.cpp include/internal/utils.hpp include/sim_seq.h)
 add_sycl_to_target(TARGET ISM_SEQ_backend SOURCES src/sim_seq.cpp)
 
 add_executable(ISM_SEQ main_seq.cpp)
@@ -38,7 +42,7 @@ add_sycl_to_target(TARGET ISM_SEQ SOURCES main_seq.cpp)
 target_link_libraries(ISM_SEQ PRIVATE ISM_SEQ_backend)
 
 # SYCL Library
-add_library(ISM_SYCL_backend SHARED src/sim_sycl.cpp include/sim_common.hpp include/sim_sycl.h)
+add_library(ISM_SYCL_backend SHARED src/sim_sycl.cpp include/internal/utils.hpp include/sim_sycl.h)
 add_sycl_to_target(TARGET ISM_SYCL_backend SOURCES src/sim_sycl.cpp)
 
 add_executable(ISM_SYCL main_sycl.cpp)

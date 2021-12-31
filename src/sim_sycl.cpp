@@ -1,10 +1,12 @@
 #include <sim_sycl.h>
+#include <utility>
+namespace internal {
 
 static inline auto compute_range_size(size_t size, size_t work_group_size) {
     return sycl::nd_range<1>(work_group_size * ((size + work_group_size - 1) / work_group_size), work_group_size);
 }
 
-template<typename T> void static inline prefetch_constant(const T* ptr) {
+template<typename T> static inline void prefetch_constant(const T* ptr) {
 #if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
     if constexpr (sizeof(ptr) == 8) {
         asm("prefetchu.L1 [%0];" : : "l"(ptr));
@@ -31,7 +33,7 @@ static inline auto internal_simulator_on_sycl(                                  
         auto z_reduction_buffer = sycl::buffer<T>(&summed_forces.z(), 1U);
         auto energy_reduction_buffer = sycl::buffer<T>(&energy, 1);
         q.submit([&](sycl::handler& cgh) {
-             cgh.depends_on(evt);
+             cgh.depends_on(std::move(evt));
 #ifdef SYCL_IMPLEMENTATION_HIPSYCL
              auto reduction_x = sycl::reduction(x_reduction_buffer.get_access(cgh), sycl::plus<T>{});
              auto reduction_y = sycl::reduction(y_reduction_buffer.get_access(cgh), sycl::plus<T>{});
@@ -98,7 +100,7 @@ static inline auto internal_simulator_on_sycl(                                  
                              /* Doing the computation between our own particule and the ones from the tile */
                              for (uint32_t j = 0U; j < this_tile_size; ++j) {
 #if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
-#pragma unroll n_sym
+#    pragma unroll n_sym
 #endif
                                  for (const auto& sym: symetries) {
                                      if (global_id == j + tile_id * group_size && sym.x() == 0 && sym.y() == 0 && sym.z() == 0)
@@ -129,20 +131,31 @@ static inline auto internal_simulator_on_sycl(                                  
                          reducer_y.combine(forces[global_id].y());
                          reducer_z.combine(forces[global_id].z());
                      });
-         }).wait();
+         }).wait_and_throw();
     }
     return std::tuple(summed_forces, energy);
 }
 
+}   // namespace internal
 
+/**
+ * Dispatches the computation to the proper kernel
+ * @tparam T
+ * @param q
+ * @param particules_device_in
+ * @param forces_device_out
+ * @param config
+ * @param evt
+ * @return
+ */
 template<typename T>
-std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(      //
-        sycl::queue& q, const std::span<coordinate<T>> particules,   //
-        std::span<coordinate<T>> forces,                             //
-        simulation_configuration<T> config,                          //
+std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(                                            //
+        sycl::queue& q,                                                                                    //
+        const std::span<coordinate<T>> particules_device_in, std::span<coordinate<T>> forces_device_out,   //
+        simulation_configuration<T> config,                                                                //
         sycl::event evt) {
     auto max_compute_units = q.get_device().get_info<sycl::info::device::max_compute_units>();
-    auto work_group_size = std::min(particules.size() / max_compute_units, q.get_device().get_info<sycl::info::device::max_work_group_size>());
+    auto work_group_size = std::min(particules_device_in.size() / max_compute_units, q.get_device().get_info<sycl::info::device::max_work_group_size>());
 
 #ifdef SYCL_IMPLEMENTATION_ONEAPI
     if (q.get_device().is_cpu() || q.get_device().is_gpu()) work_group_size = std::min(512UL, work_group_size);
@@ -150,9 +163,9 @@ std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(      //
 
     auto kernel_on_multiple_size = [&]<int multiple_size>() {
         if (config.n_symetries == 1) {
-            return internal_simulator_on_sycl<T, multiple_size, 1>(q, work_group_size, particules, forces, config, evt);
+            return internal::internal_simulator_on_sycl<T, multiple_size, 1>(q, work_group_size, particules_device_in, forces_device_out, config, evt);
         } else if (config.n_symetries == 27) {
-            return internal_simulator_on_sycl<T, multiple_size, 27>(q, work_group_size, particules, forces, config, evt);
+            return internal::internal_simulator_on_sycl<T, multiple_size, 27>(q, work_group_size, particules_device_in, forces_device_out, config, evt);
             //        } else if (config.n_symetries == 125) {
             //            return internal_simulator_on_sycl<T, multiple_size, 125>(q, work_group_size, particules, forces, config, evt);
         } else {
@@ -160,7 +173,7 @@ std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(      //
         }
     };
 
-    if (particules.size() % work_group_size == 0) {
+    if (particules_device_in.size() % work_group_size == 0) {
         return kernel_on_multiple_size.template operator()<true>();
     } else {
         return kernel_on_multiple_size.template operator()<false>();
@@ -173,21 +186,31 @@ template std::tuple<coordinate<sycl::half>, sycl::half> run_simulation_sycl_devi
         simulation_configuration<sycl::half> config, sycl::event evt);
 #endif
 #ifdef BUILD_FLOAT
-template std::tuple<coordinate<float>, float> run_simulation_sycl_device_memory<float>(       //
-        sycl::queue& q,                                                                       //
-        const std::span<coordinate<float>> particules, std::span<coordinate<float>> forces,   //
+template std::tuple<coordinate<float>, float> run_simulation_sycl_device_memory<float>(                            //
+        sycl::queue& q,                                                                                            //
+        const std::span<coordinate<float>> particules_device_in, std::span<coordinate<float>> forces_device_out,   //
         simulation_configuration<float> config, sycl::event evt);
 #endif
 
-template std::tuple<coordinate<double>, double> run_simulation_sycl_device_memory<double>(      //
-        sycl::queue& q,                                                                         //
-        const std::span<coordinate<double>> particules, std::span<coordinate<double>> forces,   //
+#ifdef BUILD_DOUBLE
+template std::tuple<coordinate<double>, double> run_simulation_sycl_device_memory<double>(                           //
+        sycl::queue& q,                                                                                              //
+        const std::span<coordinate<double>> particules_device_in, std::span<coordinate<double>> forces_device_out,   //
         simulation_configuration<double> config, sycl::event evt);
+#endif
 
-
+/**
+ * Launches computation on host memory
+ * @tparam T
+ * @param q
+ * @param config
+ * @param particules_host
+ * @return
+ */
 template<typename T>
 std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sycl(   //
-        sycl::queue& q, simulation_configuration<T> config, const std::vector<coordinate<T>>& particules_host) {
+        sycl::queue& q,                                                         //
+        simulation_configuration<T> config, const std::vector<coordinate<T>>& particules_host) {
     auto particules_device = std::span(sycl::malloc_device<coordinate<T>>(particules_host.size(), q), particules_host.size());
     auto copy_evt = q.copy(particules_host.data(), particules_device.data(), particules_device.size());
     auto forces_device = std::span(sycl::malloc_device<coordinate<T>>(particules_host.size(), q), particules_host.size());
@@ -209,5 +232,7 @@ template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   
 run_simulation_sycl<float>(sycl::queue& q, simulation_configuration<float> config, const std::vector<coordinate<float>>& particules_host);
 #endif
 
+#ifdef BUILD_DOUBLE
 template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
 run_simulation_sycl<double>(sycl::queue& q, simulation_configuration<double> config, const std::vector<coordinate<double>>& particules_host);
+#endif

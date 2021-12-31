@@ -34,8 +34,8 @@ std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sequenti
         return internal_simulator_sequential<T, 1>(particules, config);
     } else if (config.n_symetries == 27) {
         return internal_simulator_sequential<T, 27>(particules, config);
-    } else if (config.n_symetries == 125) {
-        return internal_simulator_sequential<T, 125>(particules, config);
+        //    } else if (config.n_symetries == 125) {
+        //        return internal_simulator_sequential<T, 125>(particules, config);
     } else {
         throw std::runtime_error("Unsupported");
     }
@@ -51,5 +51,7 @@ template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   
 run_simulation_sequential(const std::vector<coordinate<float>>& particules, simulation_configuration<float> config);
 #endif
 
+#ifdef BUILD_DOUBLE
 template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
 run_simulation_sequential(const std::vector<coordinate<double>>& particules, simulation_configuration<double> config);
+#endif

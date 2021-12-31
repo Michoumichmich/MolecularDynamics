@@ -9,9 +9,7 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 //    (See accompanying file ../../LICENSE_1_0.txt or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
-#if __has_include(<span>)
-#include <span>
-#else
+#pragma once
 
 #include <array>
 #include <cstddef>
@@ -20,39 +18,39 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 
 #ifndef TCB_SPAN_NO_EXCEPTIONS
 // Attempt to discover whether we're being compiled with exception support
-#if !(defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND))
-#define TCB_SPAN_NO_EXCEPTIONS
-#endif
+#    if !(defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND))
+#        define TCB_SPAN_NO_EXCEPTIONS
+#    endif
 #endif
 
 #ifndef TCB_SPAN_NO_EXCEPTIONS
-#include <cstdio>
-#include <stdexcept>
+#    include <cstdio>
+#    include <stdexcept>
 #endif
 
 // Various feature test macros
 
 #ifndef TCB_SPAN_NAMESPACE_NAME
-#define TCB_SPAN_NAMESPACE_NAME std
+#    define TCB_SPAN_NAMESPACE_NAME std
 #endif
 
 #if __cplusplus >= 201703L || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
-#define TCB_SPAN_HAVE_CPP17
+#    define TCB_SPAN_HAVE_CPP17
 #endif
 
 #if __cplusplus >= 201402L || (defined(_MSVC_LANG) && _MSVC_LANG >= 201402L)
-#define TCB_SPAN_HAVE_CPP14
+#    define TCB_SPAN_HAVE_CPP14
 #endif
 
 namespace TCB_SPAN_NAMESPACE_NAME {
 
 // Establish default contract checking behavior
 #if !defined(TCB_SPAN_THROW_ON_CONTRACT_VIOLATION) && !defined(TCB_SPAN_TERMINATE_ON_CONTRACT_VIOLATION) && !defined(TCB_SPAN_NO_CONTRACT_CHECKING)
-#if defined(NDEBUG) || !defined(TCB_SPAN_HAVE_CPP14)
-#define TCB_SPAN_NO_CONTRACT_CHECKING
-#else
-#define TCB_SPAN_TERMINATE_ON_CONTRACT_VIOLATION
-#endif
+#    if defined(NDEBUG) || !defined(TCB_SPAN_HAVE_CPP14)
+#        define TCB_SPAN_NO_CONTRACT_CHECKING
+#    else
+#        define TCB_SPAN_TERMINATE_ON_CONTRACT_VIOLATION
+#    endif
 #endif
 
 #if defined(TCB_SPAN_THROW_ON_CONTRACT_VIOLATION)
@@ -67,56 +65,56 @@ inline void contract_violation(const char* msg) { throw contract_violation_error
 #endif
 
 #if !defined(TCB_SPAN_NO_CONTRACT_CHECKING)
-#define TCB_SPAN_STRINGIFY(cond) #cond
-#define TCB_SPAN_EXPECT(cond) cond ? (void) 0 : contract_violation("Expected " TCB_SPAN_STRINGIFY(cond))
+#    define TCB_SPAN_STRINGIFY(cond) #    cond
+#    define TCB_SPAN_EXPECT(cond) cond ? (void) 0 : contract_violation("Expected " TCB_SPAN_STRINGIFY(cond))
 #else
-#define TCB_SPAN_EXPECT(cond)
+#    define TCB_SPAN_EXPECT(cond)
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP17) || defined(__cpp_inline_variables)
-#define TCB_SPAN_INLINE_VAR inline
+#    define TCB_SPAN_INLINE_VAR inline
 #else
-#define TCB_SPAN_INLINE_VAR
+#    define TCB_SPAN_INLINE_VAR
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP14) || (defined(__cpp_constexpr) && __cpp_constexpr >= 201304)
-#define TCB_SPAN_HAVE_CPP14_CONSTEXPR
+#    define TCB_SPAN_HAVE_CPP14_CONSTEXPR
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP14_CONSTEXPR)
-#define TCB_SPAN_CONSTEXPR14 constexpr
+#    define TCB_SPAN_CONSTEXPR14 constexpr
 #else
-#define TCB_SPAN_CONSTEXPR14
+#    define TCB_SPAN_CONSTEXPR14
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP14_CONSTEXPR) && (!defined(_MSC_VER) || _MSC_VER > 1900)
-#define TCB_SPAN_CONSTEXPR_ASSIGN constexpr
+#    define TCB_SPAN_CONSTEXPR_ASSIGN constexpr
 #else
-#define TCB_SPAN_CONSTEXPR_ASSIGN
+#    define TCB_SPAN_CONSTEXPR_ASSIGN
 #endif
 
 #if defined(TCB_SPAN_NO_CONTRACT_CHECKING)
-#define TCB_SPAN_CONSTEXPR11 constexpr
+#    define TCB_SPAN_CONSTEXPR11 constexpr
 #else
-#define TCB_SPAN_CONSTEXPR11 TCB_SPAN_CONSTEXPR14
+#    define TCB_SPAN_CONSTEXPR11 TCB_SPAN_CONSTEXPR14
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP17) || defined(__cpp_deduction_guides)
-#define TCB_SPAN_HAVE_DEDUCTION_GUIDES
+#    define TCB_SPAN_HAVE_DEDUCTION_GUIDES
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP17) || defined(__cpp_lib_byte)
-#define TCB_SPAN_HAVE_STD_BYTE
+#    define TCB_SPAN_HAVE_STD_BYTE
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP17) || defined(__cpp_lib_array_constexpr)
-#define TCB_SPAN_HAVE_CONSTEXPR_STD_ARRAY_ETC
+#    define TCB_SPAN_HAVE_CONSTEXPR_STD_ARRAY_ETC
 #endif
 
 #if defined(TCB_SPAN_HAVE_CONSTEXPR_STD_ARRAY_ETC)
-#define TCB_SPAN_ARRAY_CONSTEXPR constexpr
+#    define TCB_SPAN_ARRAY_CONSTEXPR constexpr
 #else
-#define TCB_SPAN_ARRAY_CONSTEXPR
+#    define TCB_SPAN_ARRAY_CONSTEXPR
 #endif
 
 #ifdef TCB_SPAN_HAVE_STD_BYTE
@@ -126,9 +124,9 @@ using byte = unsigned char;
 #endif
 
 #if defined(TCB_SPAN_HAVE_CPP17)
-#define TCB_SPAN_NODISCARD [[nodiscard]]
+#    define TCB_SPAN_NODISCARD [[nodiscard]]
 #else
-#define TCB_SPAN_NODISCARD
+#    define TCB_SPAN_NODISCARD
 #endif
 
 TCB_SPAN_INLINE_VAR constexpr std::size_t dynamic_extent = SIZE_MAX;
@@ -202,10 +200,10 @@ template<typename T> using remove_pointer_t = typename std::remove_pointer<T>::t
 template<typename, typename, typename = void> struct is_container_element_type_compatible : std::false_type {};
 
 template<typename T, typename E>
-struct is_container_element_type_compatible<
-        T, E,
-        typename std::enable_if<!std::is_same<typename std::remove_cv<decltype(detail::data(std::declval<T>()))>::type, void>::value &&
-                                std::is_convertible<remove_pointer_t<decltype(detail::data(std::declval<T>()))> (*)[], E (*)[]>::value>::type> : std::true_type {};
+struct is_container_element_type_compatible<T, E,
+                                            typename std::enable_if<!std::is_same<typename std::remove_cv<decltype(detail::data(std::declval<T>()))>::type, void>::value &&
+                                                                    std::is_convertible<remove_pointer_t<decltype(detail::data(std::declval<T>()))> (*)[], E (*)[]>::value>::type>
+    : std::true_type {};
 
 template<typename, typename = size_t> struct is_complete : std::false_type {};
 
@@ -247,24 +245,21 @@ public:
     }
 
     template<std::size_t N, std::size_t E = Extent,
-             typename std::enable_if<(E == dynamic_extent || N == E) && detail::is_container_element_type_compatible<element_type (&)[N], ElementType>::value,
-                                     int>::type = 0>
+             typename std::enable_if<(E == dynamic_extent || N == E) && detail::is_container_element_type_compatible<element_type (&)[N], ElementType>::value, int>::type = 0>
     constexpr span(element_type (&arr)[N]) noexcept : storage_(arr, N) {}
-
-    template<std::size_t N, std::size_t E = Extent,
-             typename std::enable_if<(E == dynamic_extent || N == E) && detail::is_container_element_type_compatible<std::array<value_type, N>&, ElementType>::value,
-                                     int>::type = 0>
-    TCB_SPAN_ARRAY_CONSTEXPR span(std::array<value_type, N>& arr) noexcept : storage_(arr.data(), N) {}
 
     template<
             std::size_t N, std::size_t E = Extent,
-            typename std::enable_if<(E == dynamic_extent || N == E) && detail::is_container_element_type_compatible<const std::array<value_type, N>&, ElementType>::value,
-                                    int>::type = 0>
+            typename std::enable_if<(E == dynamic_extent || N == E) && detail::is_container_element_type_compatible<std::array<value_type, N>&, ElementType>::value, int>::type = 0>
+    TCB_SPAN_ARRAY_CONSTEXPR span(std::array<value_type, N>& arr) noexcept : storage_(arr.data(), N) {}
+
+    template<std::size_t N, std::size_t E = Extent,
+             typename std::enable_if<(E == dynamic_extent || N == E) && detail::is_container_element_type_compatible<const std::array<value_type, N>&, ElementType>::value,
+                                     int>::type = 0>
     TCB_SPAN_ARRAY_CONSTEXPR span(const std::array<value_type, N>& arr) noexcept : storage_(arr.data(), N) {}
 
     template<typename Container, std::size_t E = Extent,
-             typename std::enable_if<E == dynamic_extent && detail::is_container<Container>::value &&
-                                             detail::is_container_element_type_compatible<Container&, ElementType>::value,
+             typename std::enable_if<E == dynamic_extent && detail::is_container<Container>::value && detail::is_container_element_type_compatible<Container&, ElementType>::value,
                                      int>::type = 0>
     constexpr span(Container& cont) : storage_(detail::data(cont), detail::size(cont)) {}
 
@@ -277,8 +272,7 @@ public:
     constexpr span(const span& other) noexcept = default;
 
     template<typename OtherElementType, std::size_t OtherExtent,
-             typename std::enable_if<(Extent == OtherExtent || Extent == dynamic_extent) && std::is_convertible<OtherElementType (*)[], ElementType (*)[]>::value,
-                                     int>::type = 0>
+             typename std::enable_if<(Extent == OtherExtent || Extent == dynamic_extent) && std::is_convertible<OtherElementType (*)[], ElementType (*)[]>::value, int>::type = 0>
     constexpr span(const span<OtherElementType, OtherExtent>& other) noexcept : storage_(other.data(), other.size()) {}
 
     ~span() noexcept = default;
@@ -411,5 +405,3 @@ public:
 };
 
 }   // end namespace std
-
-#endif   // TCB_SPAN_HPP_INCLUDED
