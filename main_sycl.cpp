@@ -14,7 +14,10 @@ template<typename T> void run_example(sycl::queue& q, const std::vector<coordina
 int main(int argc, char** argv) {
     auto q = sycl::queue{sycl::default_selector{}};
     std::cout << "Running on: " << q.get_device().get_info<sycl::info::device::name>() << std::endl;
-    if (argc < 2) return 1;
+    if (argc < 2) {
+        std::cerr << "Usage: ./" << argv[0] << "particle_file.xyz" << std::endl;
+        return 1;
+    }
     auto coordinates_double = parse_particule_file(argv[1]);
 
 #ifdef BUILD_DOUBLE
@@ -39,7 +42,7 @@ int main(int argc, char** argv) {
 #endif
 
 #ifdef BUILD_HALF
-    auto coordinates_half = coordinate_vector_cast<float>(coordinates_double);
+    auto coordinates_half = coordinate_vector_cast<sycl::half>(coordinates_double);
     run_example(q, coordinates_half, {.use_cutoff = false, .n_symetries = 1});
     run_example(q, coordinates_half, {.use_cutoff = false, .n_symetries = 27});
     run_example(q, coordinates_half, {.use_cutoff = true, .n_symetries = 1});
