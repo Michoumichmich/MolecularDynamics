@@ -48,7 +48,7 @@ static inline auto internal_simulator_on_sycl(                                  
              auto particules_tile = sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local>(sycl::range<1>(work_group_size), cgh);
              cgh.parallel_for<leenard_jones_kernel<T, multiple_size, n_sym>>(
                      compute_range_size(particules.size(), work_group_size), reduction_x, reduction_y, reduction_z, reduction_energy,
-                     [=](const sycl::nd_item<1>& item, auto& reducer_x, auto& reducer_y, auto& reducer_z, auto& reducer_energy) {
+                     [particules, particules_tile, forces, config](const sycl::nd_item<1>& item, auto& reducer_x, auto& reducer_y, auto& reducer_z, auto& reducer_energy) {
                          /* Getting space coordinates */
                          const uint32_t global_id = item.get_global_linear_id();
                          const uint32_t local_id = item.get_local_linear_id();
@@ -160,9 +160,14 @@ std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(                 
         sycl::event evt) {
     auto max_compute_units = q.get_device().get_info<sycl::info::device::max_compute_units>();
     auto work_group_size = std::min(particules_device_in.size() / max_compute_units, q.get_device().get_info<sycl::info::device::max_work_group_size>());
-
+    //auto subgroup_sizes = q.get_device().get_info<sycl::info::device::sub_group_sizes>();
+    //for (auto size: subgroup_sizes) { std::cout << size << std::endl; }
 #ifdef SYCL_IMPLEMENTATION_ONEAPI
-    if (q.get_device().is_cpu() || q.get_device().is_gpu()) work_group_size = std::min(512UL, work_group_size);
+    if (q.get_device().is_cpu()) {
+        work_group_size = std::min(32UL, work_group_size);
+    } else if (q.get_device().is_gpu()) {
+        work_group_size = std::min(512UL, work_group_size);
+    }
 #endif
 
     auto kernel_on_multiple_size = [&]<int multiple_size>() {

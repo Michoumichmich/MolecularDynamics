@@ -4,8 +4,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 
 template<typename T> using coordinate = sycl::vec<T, 3U>;
@@ -13,13 +13,7 @@ template<typename T> using force = sycl::vec<T, 3U>;
 
 template<typename Dst_T, typename Src_T> static inline std::vector<coordinate<Dst_T>> coordinate_vector_cast(const std::vector<coordinate<Src_T>>& in) {
     std::vector<coordinate<Dst_T>> out(in.size());
-    for (unsigned int i = 0; i < in.size(); ++i) {
-        coordinate<Dst_T> c;
-        c.x() = in[i].x();
-        c.y() = in[i].y();
-        c.z() = in[i].z();
-        out[i] = c;
-    }
+    for (unsigned int i = 0; i < in.size(); ++i) { out[i] = coordinate<Dst_T>{static_cast<Dst_T>(in[i].x()), static_cast<Dst_T>(in[i].y()), static_cast<Dst_T>(in[i].z())}; }
     return out;
 }
 
