@@ -7,9 +7,9 @@ set(WARNINGS "-Wall -Wextra -Wno-assume -Wno-unused-command-line-argument")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS} -Wno-tautological-constant-compare")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -Og -g3 ${WARNINGS}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined ${WARNINGS}")
 
-set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda,spir64_x86_64,spir64-fpga -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Xcuda-ptxas -v)
+set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda,spir64_x86_64,spir64-fpga -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Xcuda-ptxas -v -fgpu-inline-threshold=10000)
 # -fcuda-approx-transcendentals -ffp-contract=fast -fcuda-flush-denormals-to-zero -Xsycl-target-backend=spir64_x86_64 --march=avx
 #set(DPCPP_FLAGS -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfx902 -fsycl-id-queries-fit-in-int)
 #set(DPCPP_FLAGS -fsycl-targets=spir64 -fsycl-id-queries-fit-in-int)
@@ -17,8 +17,8 @@ set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda,spir64_x86_64,spir64-fpga -fs
 include(cmake/FindSYCL.cmake)
 
 option(BUILD_DOUBLE "Build with double backend" ON)
-option(BUILD_FLOAT "Build with float backend" ON)
-option(BUILD_HALF "Build with half backend" ON)
+option(BUILD_FLOAT "Build with float backend" OFF)
+option(BUILD_HALF "Build with half backend" OFF)
 
 if (BUILD_DOUBLE)
     add_definitions(-DBUILD_DOUBLE)

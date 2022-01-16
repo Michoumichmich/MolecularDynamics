@@ -18,7 +18,6 @@ template<typename T> static inline void prefetch_constant(const T* ptr) {
 #endif
 }
 
-
 template<typename T, bool multiple_size, int n_sym> class leenard_jones_kernel {
 private:
     const simulation_configuration<T> config_;
@@ -30,12 +29,12 @@ public:
     leenard_jones_kernel(                                 //
             const simulation_configuration<T>& config,    //
             const std::span<coordinate<T>>& particules,   //
-            std::span<coordinate<T>>& forces,             //
-            sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local>& acc)
+            const std::span<coordinate<T>>& forces,       //
+            const sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local>& acc)
         : config_(config), particules_(particules), forces_field_(forces), particules_tile_(acc) {}
 
 
-    inline void operator()(const sycl::nd_item<1>& item, auto& reducer_x, auto& reducer_y, auto& reducer_z, auto& reducer_energy) {
+    inline void operator()(const sycl::nd_item<1>& item, auto& reducer_x, auto& reducer_y, auto& reducer_z, auto& reducer_energy) const noexcept {
         /* Getting space coordinates */
         const uint32_t global_id = item.get_global_linear_id();
         const uint32_t local_id = item.get_local_linear_id();
@@ -52,7 +51,7 @@ public:
 
         /* Setting up local variables */
         const auto this_work_item_particule = is_active_work_item ? particules_[global_id] : coordinate<T>{};
-        static const auto symetries = get_symetries<n_sym>();
+
         /* Local reducers */
         auto this_particule_energy = T{};
         auto this_particule_force = coordinate<T>{0, 0, 0};
@@ -88,9 +87,10 @@ public:
 #if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
 #    pragma unroll n_sym
 #endif
-                for (const auto& sym: symetries) {
-                    if (global_id == j + tile_id * group_size && sym.x() == 0 && sym.y() == 0 && sym.z() == 0)
+                for (const auto& sym: get_symetries<n_sym>()) {
+                    if (global_id == j + tile_id * group_size && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) {
                         continue; /* We eliminate the case where the two particles are the same */
+                    }
 
                     /* Getting the other particle 'j' and it's perturbation */
                     const coordinate<T> delta{sym.x() * config_.L_, sym.y() * config_.L_, sym.z() * config_.L_};
