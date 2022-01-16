@@ -1,7 +1,17 @@
 #include <sim_seq.h>
 
-template<typename T, int n_sym> static inline auto internal_simulator_sequential(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config) {
-    auto forces = std::vector<coordinate<T>>(particules.size());
+
+/**
+ *
+ * @tparam T Floating point type
+ * @param particules std::vector of particules on the host
+ * @param config Simulation configuration
+ * @return tuple with the forces, summed_forces and the energy
+ */
+template<typename T, int n_sym>
+static inline auto compute_lennard_jones_field_inplace_sequential(const std::vector<coordinate<T>>& particules,   //
+                                                                  simulation_configuration<T> config,             //
+                                                                  std::vector<coordinate<T>>& forces) noexcept {
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
 
@@ -30,33 +40,114 @@ template<typename T, int n_sym> static inline auto internal_simulator_sequential
         energy += 2 * config.epsilon_star_ * this_particule_energy;   //We divided because the energies would be counted twice otherwise
         summed_forces += forces[i] * (-48) * config.epsilon_star_;
     }
-    return std::tuple(forces, summed_forces, energy);
+    return std::tuple(summed_forces, energy);
 }
 
+
 template<typename T>
-std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sequential(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config) {
+static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config, std::vector<coordinate<T>>& forces) {
     if (config.n_symetries == 1) {
-        return internal_simulator_sequential<T, 1>(particules, config);
+        return compute_lennard_jones_field_inplace_sequential<T, 1>(particules, config, forces);
     } else if (config.n_symetries == 27) {
-        return internal_simulator_sequential<T, 27>(particules, config);
-        //    } else if (config.n_symetries == 125) {
-        //        return internal_simulator_sequential<T, 125>(particules, config);
+        return compute_lennard_jones_field_inplace_sequential<T, 27>(particules, config, forces);
     } else {
         throw std::runtime_error("Unsupported");
     }
 }
 
+
+template<typename T, int n_sym>
+static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& particules,   //
+                                              std::vector<coordinate<T>>& forces,       //
+                                              std::vector<coordinate<T>>& momentums,    //
+                                              simulation_configuration<T> config) noexcept {
+
+    const size_t N = particules.size();
+
+    // First step: half step update of the momentums.
+    for (size_t i = 0; i < N; ++i) { momentums[i] += forces[i] * config.dt / 2; }
+
+    // Second step: update particules positions
+    for (size_t i = 0; i < N; ++i) { particules[i] += config.dt * (momentums[i] / config.m_i); }
+
+    auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
+
+    // Last step: update momentums given new forces
+    for (size_t i = 0; i < N; ++i) { momentums[i] += forces[i] * config.dt / 2; }
+    return std::tuple{sum, energy};
+}
+
+
+/**
+ * Runs an iteration of the Velocity Verlet algorithm.
+ * @tparam T
+ * @param particules
+ * @param forces
+ * @param momentums
+ * @param config
+ */
+template<typename T>
+static inline auto run_velocity_verlet_sequential(std::vector<coordinate<T>>& particules,   //
+                                                  std::vector<coordinate<T>>& forces,       //
+                                                  std::vector<coordinate<T>>& momentums,    //
+                                                  simulation_configuration<T> config) {
+    if (config.n_symetries == 1) {
+        return velocity_verlet_sequential<T, 1>(particules, forces, momentums, config);
+    } else if (config.n_symetries == 27) {
+        return velocity_verlet_sequential<T, 27>(particules, forces, momentums, config);
+    } else {
+        throw std::runtime_error("Unsupported");
+    }
+}
+
+
+template<typename T>
+simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config)
+    : config_(config),                                             //
+      simulation_idx(0),                                           //
+      coordinates_(particules),                                    //
+      momentums_(std::vector<coordinate<T>>(particules.size())),   //
+      forces_(std::vector<coordinate<T>>(particules.size())) {
+
+    // Initializes the forces field.
+    auto [sums, energy] = compute_lennard_jones_field(coordinates_, config, forces_);
+    summed_forces_ = sums;
+    lennard_jones_energy_ = energy;
+
+    // Randinit momentums
+    auto gen = []() { return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1)); };
+    std::generate(momentums_.begin(), momentums_.end(), gen);
+}
+
+
+template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() noexcept {
+    T sum = {};
+    for (const auto& momentum: momentums_) { sum += sycl::dot<coordinate<T>>(momentum, momentum); }
+    sum /= config_.m_i;
+    kinetic_energy_ = sum / (2 * config_.conversion_force);
+    temperature_ = kinetic_energy_ / (config_.constante_R * (3 * coordinates_.size() - 3));
+}
+
+template<typename T> void simulation_state<T>::run_iter() {
+    ++simulation_idx;
+    auto [summed_forces, lennard_jones_energy] = run_velocity_verlet_sequential(coordinates_, forces_, momentums_, config_);
+    summed_forces_ = summed_forces;
+    lennard_jones_energy_ = lennard_jones_energy;
+    update_kinetic_energy_and_temp();
+    std::cout << "Kinetic energy: " << kinetic_energy_ << ", temperature: " << temperature_ << ", lennard_jones_energy: " << lennard_jones_energy_ << std::endl;
+}
+
+
 #ifdef BUILD_HALF
-template std::tuple<std::vector<coordinate<sycl::half>>, coordinate<sycl::half>, sycl::half>   //
-run_simulation_sequential(const std::vector<coordinate<sycl::half>>& particules, simulation_configuration<sycl::half> config);
+template class simulation_state<sycl::half>;
 #endif
+
 
 #ifdef BUILD_FLOAT
-template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   //
-run_simulation_sequential(const std::vector<coordinate<float>>& particules, simulation_configuration<float> config);
+template class simulation_state<float>;
 #endif
 
+
 #ifdef BUILD_DOUBLE
-template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
-run_simulation_sequential(const std::vector<coordinate<double>>& particules, simulation_configuration<double> config);
+template class simulation_state<double>;
 #endif

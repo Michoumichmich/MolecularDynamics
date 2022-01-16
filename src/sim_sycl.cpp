@@ -50,7 +50,7 @@ public:
         }();
 
         /* Setting up local variables */
-        const auto this_work_item_particule = is_active_work_item ? particules_[global_id] : coordinate<T>{};
+        const coordinate<T> this_work_item_particule = is_active_work_item ? particules_[global_id] : coordinate<T>{};
 
         /* Local reducers */
         auto this_particule_energy = T{};
@@ -74,7 +74,7 @@ public:
             }();
 
             /* Loading data (as tiles) into local_memory */
-            const auto new_particule = is_active_tile ? particules_[global_particule_idx] : coordinate<T>{};
+            const coordinate<T> new_particule = is_active_tile ? particules_[global_particule_idx] : coordinate<T>{};
             sycl::group_barrier(item.get_group());
             particules_tile_[local_id] = new_particule;
             sycl::group_barrier(item.get_group());
@@ -95,8 +95,7 @@ public:
                     /* Getting the other particle 'j' and it's perturbation */
                     const coordinate<T> delta{sym.x() * config_.L_, sym.y() * config_.L_, sym.z() * config_.L_};
 
-                    const auto other_particule = delta + particules_tile_[j];
-                    //const T squared_distance = sycl::dot(this_work_item_particule, other_particule);//
+                    const coordinate<T> other_particule = delta + particules_tile_[j];
                     const T squared_distance = compute_squared_distance(this_work_item_particule, other_particule);
                     /* If kernel uses radius cutoff, known at compile-time */
                     if (config_.use_cutoff && squared_distance > integral_power<2>(config_.r_cut_)) continue;

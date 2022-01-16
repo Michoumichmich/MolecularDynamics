@@ -11,15 +11,16 @@ template<typename T> static inline std::vector<coordinate<T>> generate_particule
     return out;
 }
 
-template<typename T> void lennard_jones_sequential(benchmark::State& state) {
+
+template<typename T> void sequential_simulation_benchmark(benchmark::State& state) {
     const simulation_configuration<T> config{.use_cutoff = false, .n_symetries = 27};
     const auto size = static_cast<size_t>(state.range(0));
     const auto vec = generate_particules<T>(size, 10 * config.r_star_);
 
-    run_simulation_sequential(vec, config);   // preheat
+    auto simulation = simulation_state(vec, config);   // preheat
     for (auto _: state) {
         auto start = std::chrono::high_resolution_clock::now();
-        auto [field, sums, energy] = run_simulation_sequential(vec, config);
+        simulation.run_iter();
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()) / 1e9;
         state.SetIterationTime(duration);
@@ -60,14 +61,14 @@ BENCHMARK(lennard_jones_sequential_half)->Unit(benchmark::kMillisecond)->RangeMu
 
 #ifdef BUILD_FLOAT
 static inline auto lennard_jones_sycl_float(auto& state) { lennard_jones_sycl<float>(state); }
-static inline auto lennard_jones_sequential_float(auto& state) { lennard_jones_sequential<float>(state); }
+static inline auto lennard_jones_sequential_float(auto& state) { sequential_simulation_benchmark<float>(state); }
 BENCHMARK(lennard_jones_sycl_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 262144)->UseManualTime();
 BENCHMARK(lennard_jones_sequential_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 4096)->UseManualTime();
 #endif
 
 #ifdef BUILD_DOUBLE
 static inline auto lennard_jones_sycl_double(auto& state) { lennard_jones_sycl<double>(state); }
-static inline auto lennard_jones_sequential_double(auto& state) { lennard_jones_sequential<double>(state); }
+static inline auto lennard_jones_sequential_double(auto& state) { sequential_simulation_benchmark<double>(state); }
 BENCHMARK(lennard_jones_sycl_double)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 262144)->UseManualTime();
 BENCHMARK(lennard_jones_sequential_double)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 4096)->UseManualTime();
 #endif

@@ -2,28 +2,39 @@
 
 #include <internal/sim_common.hpp>
 
-/**
- *
- * @tparam T Floating point type
- * @param particules std::vector of particules on the host
- * @param config Simulation configuration
- * @return tuple with the forces, summed_forces and the energy
- */
-template<typename T>
-std::tuple<std::vector<coordinate<T>>, coordinate<T>, T>   //
-run_simulation_sequential(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config);
+
+template<typename T> class simulation_state {
+private:
+    const simulation_configuration<T> config_;
+    size_t simulation_idx;
+    std::vector<coordinate<T>> coordinates_;
+    std::vector<coordinate<T>> momentums_;   // Vi * mi
+    std::vector<coordinate<T>> forces_;      // Lennard Jones Field
+    coordinate<T> summed_forces_;
+    T lennard_jones_energy_;
+    T temperature_;
+    T kinetic_energy_;
+
+
+private:
+    void update_kinetic_energy_and_temp() noexcept;
+
+public:
+    simulation_state(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config);
+
+    void run_iter();
+};
 
 #ifdef BUILD_HALF
-extern template std::tuple<std::vector<coordinate<sycl::half>>, coordinate<sycl::half>, sycl::half>   //
-run_simulation_sequential(const std::vector<coordinate<sycl::half>>& particules, simulation_configuration<sycl::half> config);
+extern template class simulation_state<sycl::half>;
 #endif
+
 
 #ifdef BUILD_FLOAT
-extern template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   //
-run_simulation_sequential(const std::vector<coordinate<float>>& particules, simulation_configuration<float> config);
+extern template class simulation_state<float>;
 #endif
 
+
 #ifdef BUILD_DOUBLE
-extern template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
-run_simulation_sequential(const std::vector<coordinate<double>>& particules, simulation_configuration<double> config);
+extern template class simulation_state<double>;
 #endif
