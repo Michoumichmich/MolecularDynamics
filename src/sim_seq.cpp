@@ -117,6 +117,8 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
     // Randinit momentums
     auto gen = []() { return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1)); };
     std::generate(momentums_.begin(), momentums_.end(), gen);
+
+    fixup_temperature(config.T0);
 }
 
 
@@ -125,7 +127,7 @@ template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() 
     for (const auto& momentum: momentums_) { sum += sycl::dot<coordinate<T>>(momentum, momentum); }
     sum /= config_.m_i;
     kinetic_energy_ = sum / (2 * config_.conversion_force);
-    temperature_ = kinetic_energy_ / (config_.constante_R * (3 * coordinates_.size() - 3));
+    temperature_ = kinetic_energy_ / (config_.constante_R * degrees_of_freedom());
 }
 
 template<typename T> void simulation_state<T>::run_iter() {
@@ -134,7 +136,16 @@ template<typename T> void simulation_state<T>::run_iter() {
     summed_forces_ = summed_forces;
     lennard_jones_energy_ = lennard_jones_energy;
     update_kinetic_energy_and_temp();
-    std::cout << "Kinetic energy: " << kinetic_energy_ << ", temperature: " << temperature_ << ", lennard_jones_energy: " << lennard_jones_energy_ << std::endl;
+    auto summed_forces_norm = sycl::sqrt(sycl::dot(summed_forces_, summed_forces_));
+    std::cout << "Kinetic energy: " << kinetic_energy_ << ", temperature: " << temperature_ << ", lennard_jones_energy: " << lennard_jones_energy_
+              << ", summed_forces_norm: " << summed_forces_norm << std::endl;
+}
+
+template<typename T> void simulation_state<T>::fixup_temperature(T desired_temperature) {
+    update_kinetic_energy_and_temp();
+    const T rapport = degrees_of_freedom() * config_.constante_R * desired_temperature / kinetic_energy_;
+    for (auto& momentum: momentums_) { momentum *= sycl::sqrt(rapport); }   // TODO sqrt missing in the paper.
+    update_kinetic_energy_and_temp();
 }
 
 

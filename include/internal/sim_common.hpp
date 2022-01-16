@@ -59,6 +59,7 @@ template<typename T> struct simulation_configuration {
     static constexpr T conversion_force = 0.0001 * 4.196;
     static constexpr T constante_R = 0.00199;
     static constexpr T dt = 1e-10;   // 1 fs
+    static constexpr T T0 = 300;
     bool use_cutoff = true;
     T r_cut_ = static_cast<T>(10);
     int n_symetries = 27;

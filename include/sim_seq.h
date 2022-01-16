@@ -19,6 +19,10 @@ private:
 private:
     void update_kinetic_energy_and_temp() noexcept;
 
+    inline size_t degrees_of_freedom() const { return 3 * coordinates_.size() - 3; }
+
+    void fixup_temperature(T desired_temp);
+
 public:
     simulation_state(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config);
 
