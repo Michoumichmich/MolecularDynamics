@@ -61,13 +61,14 @@ template<typename T> struct simulation_configuration {
     static constexpr T dt = 1e-15;   // 1 fs
     static constexpr T T0 = 300;
     static constexpr T gamma = 0.01;
-    static constexpr size_t m_step = 20;
+    static constexpr size_t m_step = 10;
+    static constexpr T r_star_ = static_cast<T>(3);
+    static constexpr T epsilon_star_ = static_cast<T>(0.2);
+
     bool use_cutoff = true;
     T r_cut_ = static_cast<T>(10);
     int n_symetries = 27;
     T L_ = static_cast<T>(30);
-    T r_star_ = static_cast<T>(3);
-    T epsilon_star_ = static_cast<T>(0.2);
 
     friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
         constexpr auto type_to_string = []() -> std::string {
@@ -82,7 +83,10 @@ template<typename T> struct simulation_configuration {
             }
         };
 
-        os << "Cutoff: " << config.use_cutoff << ", r_cut: " << config.r_cut_ << ", n_symetries: " << config.n_symetries << ", box_width: " << config.L_
+        os << "Cutoff: " << config.use_cutoff           //
+           << ", r_cut: " << config.r_cut_              //
+           << ", n_symetries: " << config.n_symetries   //
+           << ", box_width: " << config.L_              //
            << ", type: " << type_to_string();
         return os;
     }
