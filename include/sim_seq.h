@@ -3,6 +3,10 @@
 #include <internal/sim_common.hpp>
 
 
+/**
+ *
+ * @tparam T
+ */
 template<typename T> class simulation_state {
 private:
     const simulation_configuration<T> config_;
@@ -10,23 +14,63 @@ private:
     std::vector<coordinate<T>> coordinates_;
     std::vector<coordinate<T>> momentums_;   // Vi * mi
     std::vector<coordinate<T>> forces_;      // Lennard Jones Field
-    coordinate<T> summed_forces_;
+    coordinate<T> forces_sum_;
     T lennard_jones_energy_;
-    T temperature_;
-    T kinetic_energy_;
+    mutable T temperature_;
+    mutable T kinetic_energy_;
 
 
 private:
-    void update_kinetic_energy_and_temp() noexcept;
+    /**
+     *
+     */
+    void update_kinetic_energy_and_temp() const noexcept;
 
-    inline size_t degrees_of_freedom() const { return 3 * coordinates_.size() - 3; }
+    /**
+     *
+     * @return
+     */
+    [[nodiscard]] inline size_t degrees_of_freedom() const { return 3 * coordinates_.size() - 3; }
 
+    /**
+     *
+     * @param desired_temp
+     */
     void fixup_temperature(T desired_temp);
 
+    /**
+     *
+     */
+    void fixup_kinetic_momentums();
+
+    void apply_berendsen_termostate();
+
 public:
+    /**
+     *
+     * @param particules
+     * @param config
+     */
     simulation_state(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config);
 
+    /**
+     *
+     */
     void run_iter();
+
+    coordinate<T> compute_barycenter() const noexcept;
+
+    friend std::ostream& operator<<(std::ostream& os, const simulation_state& state) {
+        auto barycenter = state.compute_barycenter();
+        os << "[" << state.simulation_idx << "] "                                                       //
+           << "Total energy: " << state.kinetic_energy_ + state.lennard_jones_energy_                   //
+           << ", temperature: " << state.temperature_                                                   //
+           << ", kinetic energy: " << state.kinetic_energy_                                             //
+           << ", lennard_jones_energy: " << state.lennard_jones_energy_                                 //
+           << ", summed_forces_norm: " << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))   //
+           << ", barycenter_speed " << sycl::sqrt(sycl::dot(barycenter, barycenter)) << '\n';
+        return os;
+    }
 };
 
 #ifdef BUILD_HALF
@@ -42,3 +86,4 @@ extern template class simulation_state<float>;
 #ifdef BUILD_DOUBLE
 extern template class simulation_state<double>;
 #endif
+

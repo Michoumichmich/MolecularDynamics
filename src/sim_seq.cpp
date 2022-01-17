@@ -111,20 +111,20 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
 
     // Initializes the forces field.
     auto [sums, energy] = compute_lennard_jones_field(coordinates_, config, forces_);
-    summed_forces_ = sums;
+    forces_sum_ = sums;
     lennard_jones_energy_ = energy;
 
     // Randinit momentums
     auto gen = []() { return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1)); };
     std::generate(momentums_.begin(), momentums_.end(), gen);
-
+    fixup_kinetic_momentums();
     fixup_temperature(config.T0);
 }
 
 
-template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() noexcept {
+template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() const noexcept {
     T sum = {};
-    for (const auto& momentum: momentums_) { sum += sycl::dot<coordinate<T>>(momentum, momentum); }
+    for (const auto& momentum: momentums_) { sum += sycl::dot(momentum, momentum); }
     sum /= config_.m_i;
     kinetic_energy_ = sum / (2 * config_.conversion_force);
     temperature_ = kinetic_energy_ / (config_.constante_R * degrees_of_freedom());
@@ -133,12 +133,10 @@ template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() 
 template<typename T> void simulation_state<T>::run_iter() {
     ++simulation_idx;
     auto [summed_forces, lennard_jones_energy] = run_velocity_verlet_sequential(coordinates_, forces_, momentums_, config_);
-    summed_forces_ = summed_forces;
+    forces_sum_ = summed_forces;
     lennard_jones_energy_ = lennard_jones_energy;
     update_kinetic_energy_and_temp();
-    auto summed_forces_norm = sycl::sqrt(sycl::dot(summed_forces_, summed_forces_));
-    std::cout << "Kinetic energy: " << kinetic_energy_ << ", temperature: " << temperature_ << ", lennard_jones_energy: " << lennard_jones_energy_
-              << ", summed_forces_norm: " << summed_forces_norm << std::endl;
+    apply_berendsen_termostate();
 }
 
 template<typename T> void simulation_state<T>::fixup_temperature(T desired_temperature) {
@@ -146,6 +144,22 @@ template<typename T> void simulation_state<T>::fixup_temperature(T desired_tempe
     const T rapport = degrees_of_freedom() * config_.constante_R * desired_temperature / kinetic_energy_;
     for (auto& momentum: momentums_) { momentum *= sycl::sqrt(rapport); }   // TODO sqrt missing in the paper.
     update_kinetic_energy_and_temp();
+}
+template<typename T> void simulation_state<T>::fixup_kinetic_momentums() {
+    coordinate<T> sum{};
+    for (const auto& momentum: momentums_) { sum += momentum; }
+    for (auto& momentum: momentums_) { momentum -= sum; }
+}
+template<typename T> void simulation_state<T>::apply_berendsen_termostate() {
+    if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
+    const T coeff = config_.gamma * ((config_.T0 / temperature_) - 1);
+    for (auto& momentum: momentums_) { momentum += momentum * coeff; }
+    update_kinetic_energy_and_temp();
+}
+template<typename T> coordinate<T> simulation_state<T>::compute_barycenter() const noexcept {
+    coordinate<T> sum{};   // Sum of vi * mi;
+    for (const auto& momentum: momentums_) { sum += momentum; }
+    return sum / (momentums_.size() * config_.m_i);
 }
 
 
