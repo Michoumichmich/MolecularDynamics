@@ -158,7 +158,7 @@ template<typename T> void simulation_state<T>::fixup_kinetic_momentums() {
  */
 template<typename T> void simulation_state<T>::apply_berendsen_thermostate() {
     if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
-    const T coeff = config_.gamma * ((config_.T0 / kinetic_temperature_) - 1);
+    const T coeff = config_.gamma * sycl::sqrt((config_.T0 / kinetic_temperature_) - 1);
     for (auto& momentum: momentums_) { momentum += momentum * coeff; }
 }
 

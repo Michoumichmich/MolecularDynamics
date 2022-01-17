@@ -61,7 +61,7 @@ template<typename T> struct simulation_configuration {
     static constexpr T dt = 1e-15;   // 1 fs
     static constexpr T T0 = 300;
     static constexpr T gamma = 0.01;
-    static constexpr size_t m_step = 10;
+    static constexpr size_t m_step = 100;
     static constexpr T r_star_ = static_cast<T>(3);
     static constexpr T epsilon_star_ = static_cast<T>(0.2);
 

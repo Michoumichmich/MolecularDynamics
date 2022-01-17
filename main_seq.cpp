@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     auto coordinates_double = parse_particule_file(argv[1]);
 
 #ifdef BUILD_DOUBLE
-    run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 1});
+    //   run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 1});
     run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 27});
     run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 1});
     run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27});
