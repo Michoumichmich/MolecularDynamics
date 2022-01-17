@@ -43,7 +43,6 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
     return std::tuple(summed_forces, energy);
 }
 
-
 template<typename T>
 static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config, std::vector<coordinate<T>>& forces) {
     if (config.n_symetries == 1) {
@@ -54,7 +53,6 @@ static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>&
         throw std::runtime_error("Unsupported");
     }
 }
-
 
 template<typename T, int n_sym>
 static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& particules,   //
@@ -76,7 +74,6 @@ static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& partic
     for (size_t i = 0; i < N; ++i) { momentums[i] += forces[i] * config.dt / 2; }
     return std::tuple{sum, energy};
 }
-
 
 /**
  * Runs an iteration of the Velocity Verlet algorithm.
@@ -110,7 +107,7 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
       forces_(std::vector<coordinate<T>>(particules.size())) {
 
     // Initializes the forces field.
-    auto [sums, energy] = compute_lennard_jones_field(coordinates_, config, forces_);
+    auto [sums, energy] = compute_lennard_jones_field(coordinates_, config_, forces_);
     forces_sum_ = sums;
     lennard_jones_energy_ = energy;
 
@@ -118,9 +115,8 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
     auto gen = []() { return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1)); };
     std::generate(momentums_.begin(), momentums_.end(), gen);
     fixup_kinetic_momentums();
-    fixup_temperature(config.T0);
+    fixup_temperature(config_.T0);
 }
-
 
 template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() const noexcept {
     T sum = {};
@@ -145,33 +141,33 @@ template<typename T> void simulation_state<T>::fixup_temperature(T desired_tempe
     for (auto& momentum: momentums_) { momentum *= sycl::sqrt(rapport); }   // TODO sqrt missing in the paper.
     update_kinetic_energy_and_temp();
 }
+
 template<typename T> void simulation_state<T>::fixup_kinetic_momentums() {
     coordinate<T> sum{};
     for (const auto& momentum: momentums_) { sum += momentum; }
     for (auto& momentum: momentums_) { momentum -= sum; }
 }
+
 template<typename T> void simulation_state<T>::apply_berendsen_termostate() {
     if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
     const T coeff = config_.gamma * ((config_.T0 / temperature_) - 1);
     for (auto& momentum: momentums_) { momentum += momentum * coeff; }
     update_kinetic_energy_and_temp();
 }
+
 template<typename T> coordinate<T> simulation_state<T>::compute_barycenter() const noexcept {
     coordinate<T> sum{};   // Sum of vi * mi;
     for (const auto& momentum: momentums_) { sum += momentum; }
     return sum / (momentums_.size() * config_.m_i);
 }
 
-
 #ifdef BUILD_HALF
 template class simulation_state<sycl::half>;
 #endif
 
-
 #ifdef BUILD_FLOAT
 template class simulation_state<float>;
 #endif
-
 
 #ifdef BUILD_DOUBLE
 template class simulation_state<double>;
