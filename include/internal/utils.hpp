@@ -91,6 +91,18 @@ template<typename T> static inline T generate_random_value(T min, T max) {
     }
 }
 
+static inline void assume(bool x) noexcept {
+#ifdef __clang__
+    if (!(x)) {
+        __builtin_trap();
+        __builtin_unreachable();
+    }
+#else
+    if (!(x)) { __builtin_unreachable(); }
+#endif
+}
+
+
 /*
 constexpr auto linear_to_strictly_lower(int index) {
     if (std::is_constant_evaluated()) {

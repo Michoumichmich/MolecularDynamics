@@ -62,12 +62,12 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const simulation_state& state) {
         auto mean_kinetic_momentum = state.compute_mean_kinetic_momentum();
-        os << "[" << state.simulation_idx << "] "                                                       //
-           << "Total energy: " << state.kinetic_energy_ + state.lennard_jones_energy_                   //
-           << ", temperature: " << state.kinetic_temperature_                                           //
-           << ", kinetic energy: " << state.kinetic_energy_                                             //
-           << ", lennard_jones_energy: " << state.lennard_jones_energy_                                 //
-           << ", summed_forces_norm: " << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))   //
+        os << "[" << state.simulation_idx << "] "                                                                                           //
+           << "Total energy: " << state.kinetic_energy_ + state.lennard_jones_energy_                                                       //
+           << ", temperature: " << state.kinetic_temperature_                                                                               //
+           << ", kinetic energy: " << state.kinetic_energy_                                                                                 //
+           << ", lennard_jones_energy: " << state.lennard_jones_energy_                                                                     //
+           << ", summed_lennard_jones: x " << state.forces_sum_.x() << ", y " << state.forces_sum_.y() << ", z " << state.forces_sum_.z()   //
            << ", mean_kinetic_momentum " << sycl::sqrt(sycl::dot(mean_kinetic_momentum, mean_kinetic_momentum)) << '\n';
         // for (size_t i = 0; i <10; ++i) { os << state.coordinates_[i].x() << ' '; } os << '\n';
         return os;

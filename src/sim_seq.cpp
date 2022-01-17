@@ -11,7 +11,7 @@
 template<typename T, int n_sym>
 static inline auto compute_lennard_jones_field_inplace_sequential(const std::vector<coordinate<T>>& particules,   //
                                                                   const simulation_configuration<T>& config,      //
-                                                                  std::vector<coordinate<T>>& forces) noexcept {
+                                                                  std::vector<coordinate<T>>& forces) {
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
 
@@ -28,9 +28,8 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
                 T squared_distance = compute_squared_distance(this_particule, other_particule);
                 if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
 
-                if constexpr (std::is_same_v<T, sycl::half>) {
-                    if (squared_distance == T{}) continue;
-                }
+                assume(squared_distance != T{});
+                //if (squared_distance == T{}) { throw std::runtime_error("God null distance"); }
 
                 const T frac_pow_2 = config.r_star_ * config.r_star_ / squared_distance;
                 const T frac_pow_6 = integral_power<3>(frac_pow_2);
@@ -42,6 +41,7 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
         energy += 2 * config.epsilon_star_ * this_particule_energy;   //We divided because the energies would be counted twice otherwise
         summed_forces += forces[i] * (-48) * config.epsilon_star_;
     }
+    //std::cout << "Energy: " << energy << std::endl;
     return std::tuple(summed_forces, energy);
 }
 
@@ -82,13 +82,14 @@ static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& partic
                                               std::vector<coordinate<T>>& momentums,    //
                                               const simulation_configuration<T>& config) noexcept {
 
+    assume(particules.size() == forces.size() && forces.size() == momentums.size());
     const size_t N = particules.size();
 
     // First step: half step update of the momentums.
     for (size_t i = 0; i < N; ++i) { momentums[i] += forces[i] * config.dt / 2; }
 
     // Second step: update particules positions
-    for (size_t i = 0; i < N; ++i) { particules[i] += config.dt * (momentums[i] / config.m_i); }
+    for (size_t i = 0; i < N; ++i) { particules[i] += config.dt * momentums[i] / config.m_i; }
 
     auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
 
@@ -195,6 +196,8 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
     std::generate(momentums_.begin(), momentums_.end(), []() {   //
         return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1));
     });
+
+
     fixup_kinetic_momentums();
     fixup_temperature(config_.T0);
 }
