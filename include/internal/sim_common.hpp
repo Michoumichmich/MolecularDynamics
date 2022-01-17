@@ -56,7 +56,7 @@ template<typename T> constexpr static inline T compute_squared_distance(const co
 
 template<typename T> struct simulation_configuration {
     static constexpr T m_i = 18;
-    static constexpr T conversion_force = 0.0001 * 4.196;
+    static constexpr T conversion_force = 0.0001 * 4.186;
     static constexpr T constante_R = 0.00199;
     static constexpr T dt = 1e-15;   // 1 fs
     static constexpr T T0 = 300;

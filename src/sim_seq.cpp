@@ -19,6 +19,8 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
         auto this_particule_energy = T{};
         const auto this_particule = particules[i];
         for (auto j = 0U; j < particules.size(); ++j) {
+
+#pragma unroll
             for (const auto& sym: get_symetries<n_sym>()) {
                 if (i == j && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) continue;
                 const coordinate<T> delta{sym.x() * config.L_, sym.y() * config.L_, sym.z() * config.L_};
@@ -43,6 +45,14 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
     return std::tuple(summed_forces, energy);
 }
 
+/**
+ *
+ * @tparam T
+ * @param particules
+ * @param config
+ * @param forces
+ * @return
+ */
 template<typename T>
 static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>& particules,   //
                                                const simulation_configuration<T>& config,      //
@@ -56,6 +66,16 @@ static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>&
     }
 }
 
+/**
+ *
+ * @tparam T
+ * @tparam n_sym
+ * @param particules
+ * @param forces
+ * @param momentums
+ * @param config
+ * @return
+ */
 template<typename T, int n_sym>
 static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& particules,   //
                                               std::vector<coordinate<T>>& forces,       //
@@ -99,7 +119,65 @@ static inline auto run_velocity_verlet_sequential(std::vector<coordinate<T>>& pa
     }
 }
 
+/**
+ *
+ * @tparam T
+ */
+template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() const noexcept {
+    T sum = {};
+    for (const auto& momentum: momentums_) { sum += sycl::dot(momentum, momentum); }
+    kinetic_energy_ = sum / (2 * config_.conversion_force * config_.m_i);
+    kinetic_temperature_ = kinetic_energy_ / (config_.constante_R * degrees_of_freedom());
+}
 
+/**
+ *
+ * @tparam T
+ * @param desired_temperature
+ */
+template<typename T> void simulation_state<T>::fixup_temperature(T desired_temperature) {
+    update_kinetic_energy_and_temp();
+    const T rapport = sycl::sqrt(degrees_of_freedom() * config_.constante_R * desired_temperature / kinetic_energy_);
+    for (auto& momentum: momentums_) { momentum *= rapport; }   // TODO sqrt missing in the paper.
+    update_kinetic_energy_and_temp();
+}
+
+/**
+ *
+ * @tparam T
+ */
+template<typename T> void simulation_state<T>::fixup_kinetic_momentums() {
+    coordinate<T> mean = compute_mean_kinetic_momentum();
+    for (auto& momentum: momentums_) { momentum -= mean; }
+}
+
+/**
+ *
+ * @tparam T
+ */
+template<typename T> void simulation_state<T>::apply_berendsen_thermostate() {
+    if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
+    const T coeff = config_.gamma * ((config_.T0 / kinetic_temperature_) - 1);
+    for (auto& momentum: momentums_) { momentum += momentum * coeff; }
+}
+
+/**
+ *
+ * @tparam T
+ * @return
+ */
+template<typename T> coordinate<T> simulation_state<T>::compute_mean_kinetic_momentum() const noexcept {
+    coordinate<T> sum{};   // Sum of vi * mi;
+    for (const auto& momentum: momentums_) { sum += momentum; }
+    return sum / momentums_.size();
+}
+
+/**
+ *
+ * @tparam T
+ * @param particules
+ * @param config
+ */
 template<typename T>
 simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config)
     : config_(config),                                             //
@@ -114,53 +192,25 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
     lennard_jones_energy_ = energy;
 
     // Randinit momentums
-    auto gen = []() { return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1)); };
-    std::generate(momentums_.begin(), momentums_.end(), gen);
+    std::generate(momentums_.begin(), momentums_.end(), []() {   //
+        return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1));
+    });
     fixup_kinetic_momentums();
     fixup_temperature(config_.T0);
 }
 
-template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() const noexcept {
-    T sum = {};
-    for (const auto& momentum: momentums_) { sum += sycl::dot(momentum, momentum); }
-    sum /= config_.m_i;
-    kinetic_energy_ = sum / (2 * config_.conversion_force);
-    temperature_ = kinetic_energy_ / (config_.constante_R * degrees_of_freedom());
-}
-
+/**
+ *
+ * @tparam T
+ */
 template<typename T> void simulation_state<T>::run_iter() {
     ++simulation_idx;
     auto [summed_forces, lennard_jones_energy] = run_velocity_verlet_sequential(coordinates_, forces_, momentums_, config_);
     forces_sum_ = summed_forces;
     lennard_jones_energy_ = lennard_jones_energy;
     update_kinetic_energy_and_temp();
-    apply_berendsen_termostate();
-}
-
-template<typename T> void simulation_state<T>::fixup_temperature(T desired_temperature) {
+    apply_berendsen_thermostate();
     update_kinetic_energy_and_temp();
-    const T rapport = degrees_of_freedom() * config_.constante_R * desired_temperature / kinetic_energy_;
-    for (auto& momentum: momentums_) { momentum *= sycl::sqrt(rapport); }   // TODO sqrt missing in the paper.
-    update_kinetic_energy_and_temp();
-}
-
-template<typename T> void simulation_state<T>::fixup_kinetic_momentums() {
-    coordinate<T> sum{};
-    for (const auto& momentum: momentums_) { sum += momentum; }
-    for (auto& momentum: momentums_) { momentum -= sum; }
-}
-
-template<typename T> void simulation_state<T>::apply_berendsen_termostate() {
-    if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
-    const T coeff = config_.gamma * ((config_.T0 / temperature_) - 1);
-    for (auto& momentum: momentums_) { momentum += momentum * coeff; }
-    update_kinetic_energy_and_temp();
-}
-
-template<typename T> coordinate<T> simulation_state<T>::compute_barycenter() const noexcept {
-    coordinate<T> sum{};   // Sum of vi * mi;
-    for (const auto& momentum: momentums_) { sum += momentum; }
-    return sum / (momentums_.size() * config_.m_i);
 }
 
 #ifdef BUILD_HALF

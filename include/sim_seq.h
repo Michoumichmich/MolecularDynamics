@@ -16,7 +16,7 @@ private:
     std::vector<coordinate<T>> forces_;      // Lennard Jones Field
     coordinate<T> forces_sum_;
     T lennard_jones_energy_;
-    mutable T temperature_;
+    mutable T kinetic_temperature_;
     mutable T kinetic_energy_;
 
 
@@ -43,7 +43,7 @@ private:
      */
     void fixup_kinetic_momentums();
 
-    void apply_berendsen_termostate();
+    void apply_berendsen_thermostate();
 
 public:
     /**
@@ -58,17 +58,17 @@ public:
      */
     void run_iter();
 
-    coordinate<T> compute_barycenter() const noexcept;
+    coordinate<T> compute_mean_kinetic_momentum() const noexcept;
 
     friend std::ostream& operator<<(std::ostream& os, const simulation_state& state) {
-        auto barycenter = state.compute_barycenter();
+        auto mean_kinetic_momentum = state.compute_mean_kinetic_momentum();
         os << "[" << state.simulation_idx << "] "                                                       //
            << "Total energy: " << state.kinetic_energy_ + state.lennard_jones_energy_                   //
-           << ", temperature: " << state.temperature_                                                   //
+           << ", temperature: " << state.kinetic_temperature_                                           //
            << ", kinetic energy: " << state.kinetic_energy_                                             //
            << ", lennard_jones_energy: " << state.lennard_jones_energy_                                 //
            << ", summed_forces_norm: " << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))   //
-           << ", barycenter_speed " << sycl::sqrt(sycl::dot(barycenter, barycenter)) << '\n';
+           << ", mean_kinetic_momentum " << sycl::sqrt(sycl::dot(mean_kinetic_momentum, mean_kinetic_momentum)) << '\n';
         // for (size_t i = 0; i <10; ++i) { os << state.coordinates_[i].x() << ' '; } os << '\n';
         return os;
     }
