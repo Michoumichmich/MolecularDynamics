@@ -10,7 +10,7 @@
  */
 template<typename T, int n_sym>
 static inline auto compute_lennard_jones_field_inplace_sequential(const std::vector<coordinate<T>>& particules,   //
-                                                                  simulation_configuration<T> config,             //
+                                                                  const simulation_configuration<T>& config,      //
                                                                   std::vector<coordinate<T>>& forces) noexcept {
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
@@ -44,7 +44,9 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
 }
 
 template<typename T>
-static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config, std::vector<coordinate<T>>& forces) {
+static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>& particules,   //
+                                               const simulation_configuration<T>& config,      //
+                                               std::vector<coordinate<T>>& forces) {
     if (config.n_symetries == 1) {
         return compute_lennard_jones_field_inplace_sequential<T, 1>(particules, config, forces);
     } else if (config.n_symetries == 27) {
@@ -58,7 +60,7 @@ template<typename T, int n_sym>
 static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& particules,   //
                                               std::vector<coordinate<T>>& forces,       //
                                               std::vector<coordinate<T>>& momentums,    //
-                                              simulation_configuration<T> config) noexcept {
+                                              const simulation_configuration<T>& config) noexcept {
 
     const size_t N = particules.size();
 
@@ -87,7 +89,7 @@ template<typename T>
 static inline auto run_velocity_verlet_sequential(std::vector<coordinate<T>>& particules,   //
                                                   std::vector<coordinate<T>>& forces,       //
                                                   std::vector<coordinate<T>>& momentums,    //
-                                                  simulation_configuration<T> config) {
+                                                  const simulation_configuration<T>& config) {
     if (config.n_symetries == 1) {
         return velocity_verlet_sequential<T, 1>(particules, forces, momentums, config);
     } else if (config.n_symetries == 27) {

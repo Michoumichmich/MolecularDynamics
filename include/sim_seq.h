@@ -69,6 +69,7 @@ public:
            << ", lennard_jones_energy: " << state.lennard_jones_energy_                                 //
            << ", summed_forces_norm: " << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))   //
            << ", barycenter_speed " << sycl::sqrt(sycl::dot(barycenter, barycenter)) << '\n';
+        // for (size_t i = 0; i <10; ++i) { os << state.coordinates_[i].x() << ' '; } os << '\n';
         return os;
     }
 };
