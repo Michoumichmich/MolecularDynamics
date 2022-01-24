@@ -86,7 +86,7 @@ static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& partic
     const size_t N = particules.size();
 
     // First step: half step update of the momentums.
-    for (size_t i = 0; i < N; ++i) { momentums[i] += forces[i] * config.dt / 2; }
+    for (size_t i = 0; i < N; ++i) { momentums[i] += config.conversion_force * forces[i] * config.dt / 2; }
 
     // Second step: update particules positions
     for (size_t i = 0; i < N; ++i) { particules[i] += config.dt * momentums[i] / config.m_i; }
@@ -94,7 +94,7 @@ static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& partic
     auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
 
     // Last step: update momentums given new forces
-    for (size_t i = 0; i < N; ++i) { momentums[i] += forces[i] * config.dt / 2; }
+    for (size_t i = 0; i < N; ++i) { momentums[i] += config.conversion_force * forces[i] * config.dt / 2; }
     return std::tuple{sum, energy};
 }
 
@@ -158,7 +158,8 @@ template<typename T> void simulation_state<T>::fixup_kinetic_momentums() {
  */
 template<typename T> void simulation_state<T>::apply_berendsen_thermostate() {
     if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
-    const T coeff = config_.gamma * sycl::sqrt((config_.T0 / kinetic_temperature_) - 1);
+    //const T coeff = config_.gamma * sycl::sqrt(std::abs((config_.T0 / kinetic_temperature_) - 1));
+    const T coeff = config_.gamma * ((config_.T0 / kinetic_temperature_) - 1);
     for (auto& momentum: momentums_) { momentum += momentum * coeff; }
 }
 
