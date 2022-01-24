@@ -9,7 +9,48 @@
 
 
 template<typename T> using coordinate = sycl::vec<T, 3U>;
-template<typename T> using force = sycl::vec<T, 3U>;
+
+template<typename T> struct simulation_configuration {
+    static constexpr T m_i = 18;                            // Mass of a particle in some unit
+    static constexpr T conversion_force = 0.0001 * 4.186;   //
+    static constexpr T constante_R = 0.00199;               //
+    static constexpr T dt = 1e-15;                          // 1 fs
+    static constexpr T T0 = 300;                            // 300 Kelvin
+
+    // Berdensten thermostate
+    static constexpr T gamma = 0.01;        // Gamma for the berdensten thermostate
+    static constexpr size_t m_step = 100;   //
+
+    // Lennard jones field config
+    static constexpr T r_star_ = static_cast<T>(3);           //
+    static constexpr T epsilon_star_ = static_cast<T>(0.2);   //
+    bool use_cutoff = true;                                   //
+    T r_cut_ = static_cast<T>(10);                            //
+    int n_symetries = 27;                                     //
+    T L_ = static_cast<T>(30);                                //
+
+
+    friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
+        constexpr auto type_to_string = []() -> std::string {
+            if constexpr (std::is_same_v<T, sycl::half>) {
+                return "sycl::half";
+            } else if constexpr (std::is_same_v<T, float>) {
+                return "float";
+            } else if constexpr (std::is_same_v<T, double>) {
+                return "double";
+            } else {
+                fail_to_compile<T>();
+            }
+        };
+
+        os << "Cutoff: " << config.use_cutoff           //
+           << ", r_cut: " << config.r_cut_              //
+           << ", n_symetries: " << config.n_symetries   //
+           << ", box_width: " << config.L_              //
+           << ", type: " << type_to_string();
+        return os;
+    }
+};
 
 template<typename Dst_T, typename Src_T> static inline std::vector<coordinate<Dst_T>> coordinate_vector_cast(const std::vector<coordinate<Src_T>>& in) {
     std::vector<coordinate<Dst_T>> out(in.size());
@@ -53,41 +94,3 @@ template<int N> static inline constexpr std::array<sycl::vec<int, 3U>, N> get_sy
 template<typename T> constexpr static inline T compute_squared_distance(const coordinate<T>& lhs, const coordinate<T>& rhs) {
     return (lhs[0U] - rhs[0U]) * (lhs[0U] - rhs[0U]) + (lhs[1U] - rhs[1U]) * (lhs[1U] - rhs[1U]) + (lhs[2U] - rhs[2U]) * (lhs[2U] - rhs[2U]);
 }
-
-template<typename T> struct simulation_configuration {
-    static constexpr T m_i = 18;
-    static constexpr T conversion_force = 0.0001 * 4.186;
-    static constexpr T constante_R = 0.00199;
-    static constexpr T dt = 1e-15;   // 1 fs
-    static constexpr T T0 = 300;
-    static constexpr T gamma = 0.01;
-    static constexpr size_t m_step = 100;
-    static constexpr T r_star_ = static_cast<T>(3);
-    static constexpr T epsilon_star_ = static_cast<T>(0.2);
-
-    bool use_cutoff = true;
-    T r_cut_ = static_cast<T>(10);
-    int n_symetries = 27;
-    T L_ = static_cast<T>(30);
-
-    friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
-        constexpr auto type_to_string = []() -> std::string {
-            if constexpr (std::is_same_v<T, sycl::half>) {
-                return "sycl::half";
-            } else if constexpr (std::is_same_v<T, float>) {
-                return "float";
-            } else if constexpr (std::is_same_v<T, double>) {
-                return "double";
-            } else {
-                fail_to_compile<T>();
-            }
-        };
-
-        os << "Cutoff: " << config.use_cutoff           //
-           << ", r_cut: " << config.r_cut_              //
-           << ", n_symetries: " << config.n_symetries   //
-           << ", box_width: " << config.L_              //
-           << ", type: " << type_to_string();
-        return os;
-    }
-};

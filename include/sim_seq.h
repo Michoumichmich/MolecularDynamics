@@ -16,15 +16,15 @@ private:
     std::vector<coordinate<T>> forces_;      // Lennard Jones Field
     coordinate<T> forces_sum_;
     T lennard_jones_energy_;
-    mutable T kinetic_temperature_;
-    mutable T kinetic_energy_;
+    T kinetic_temperature_;
+    T kinetic_energy_;
 
 
 private:
     /**
      *
      */
-    void update_kinetic_energy_and_temp() const noexcept;
+    void update_kinetic_energy_and_temp() noexcept;
 
     /**
      *
@@ -36,14 +36,14 @@ private:
      *
      * @param desired_temp
      */
-    void fixup_temperature(T desired_temp);
+    void fixup_temperature(T desired_temp) noexcept;
 
     /**
      *
      */
-    void fixup_kinetic_momentums();
+    void fixup_kinetic_momentums() noexcept;
 
-    void apply_berendsen_thermostate();
+    void apply_berendsen_thermostate() noexcept;
 
 public:
     /**
@@ -87,4 +87,3 @@ extern template class simulation_state<float>;
 #ifdef BUILD_DOUBLE
 extern template class simulation_state<double>;
 #endif
-

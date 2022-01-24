@@ -29,7 +29,7 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
                 if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
 
                 assume(squared_distance != T{});
-                //if (squared_distance == T{}) { throw std::runtime_error("God null distance"); }
+                //if (squared_distance == T{}) { throw std::runtime_error("Got null distance"); }
 
                 const T frac_pow_2 = config.r_star_ * config.r_star_ / squared_distance;
                 const T frac_pow_6 = integral_power<3>(frac_pow_2);
@@ -46,7 +46,7 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
 }
 
 /**
- *
+ * Launches the Lennard Jones computation based on the symetries count.
  * @tparam T
  * @param particules
  * @param config
@@ -67,14 +67,14 @@ static inline auto compute_lennard_jones_field(const std::vector<coordinate<T>>&
 }
 
 /**
- *
- * @tparam T
- * @tparam n_sym
- * @param particules
- * @param forces
- * @param momentums
+ * Runs one iteration of the velocity verlet algorithm.
+ * @tparam T float type
+ * @tparam n_sym 1 or 27
+ * @param particules inout
+ * @param forces inout
+ * @param momentums inout
  * @param config
- * @return
+ * @return std::tuple{sum, energy}
  */
 template<typename T, int n_sym>
 static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& particules,   //
@@ -91,10 +91,11 @@ static inline auto velocity_verlet_sequential(std::vector<coordinate<T>>& partic
     // Second step: update particules positions
     for (size_t i = 0; i < N; ++i) { particules[i] += config.dt * momentums[i] / config.m_i; }
 
-    auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
+    compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
 
     // Last step: update momentums given new forces
     for (size_t i = 0; i < N; ++i) { momentums[i] += config.conversion_force * forces[i] * config.dt / 2; }
+    auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
     return std::tuple{sum, energy};
 }
 
@@ -120,11 +121,15 @@ static inline auto run_velocity_verlet_sequential(std::vector<coordinate<T>>& pa
     }
 }
 
+
+//////  SIMULATION STATE METHODS //////
+
+
 /**
- *
+ * Updates the kinectic energy and temperature based on current momentums.
  * @tparam T
  */
-template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() const noexcept {
+template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() noexcept {
     T sum = {};
     for (const auto& momentum: momentums_) { sum += sycl::dot(momentum, momentum); }
     kinetic_energy_ = sum / (2 * config_.conversion_force * config_.m_i);
@@ -132,31 +137,31 @@ template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() 
 }
 
 /**
- *
+ * Updates the momentums to match the desierd kinetic temperature.
  * @tparam T
  * @param desired_temperature
  */
-template<typename T> void simulation_state<T>::fixup_temperature(T desired_temperature) {
+template<typename T> void simulation_state<T>::fixup_temperature(T desired_temperature) noexcept {
     update_kinetic_energy_and_temp();
     const T rapport = sycl::sqrt(degrees_of_freedom() * config_.constante_R * desired_temperature / kinetic_energy_);
-    for (auto& momentum: momentums_) { momentum *= rapport; }   // TODO sqrt missing in the paper.
+    for (auto& momentum: momentums_) { momentum *= rapport; }
     update_kinetic_energy_and_temp();
 }
 
 /**
- *
+ * Fixes the kinetic momentums in a way that the barycenter does not move.
  * @tparam T
  */
-template<typename T> void simulation_state<T>::fixup_kinetic_momentums() {
+template<typename T> void simulation_state<T>::fixup_kinetic_momentums() noexcept {
     coordinate<T> mean = compute_mean_kinetic_momentum();
     for (auto& momentum: momentums_) { momentum -= mean; }
 }
 
 /**
- *
+ * Applies the Berendsen thermostate on the current system using the current kinetic temperature.
  * @tparam T
  */
-template<typename T> void simulation_state<T>::apply_berendsen_thermostate() {
+template<typename T> void simulation_state<T>::apply_berendsen_thermostate() noexcept {
     if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
     //const T coeff = config_.gamma * sycl::sqrt(std::abs((config_.T0 / kinetic_temperature_) - 1));
     const T coeff = config_.gamma * ((config_.T0 / kinetic_temperature_) - 1);
@@ -164,8 +169,7 @@ template<typename T> void simulation_state<T>::apply_berendsen_thermostate() {
 }
 
 /**
- *
- * @tparam T
+ * Computes the mean kinetic momentum of the system.
  * @return
  */
 template<typename T> coordinate<T> simulation_state<T>::compute_mean_kinetic_momentum() const noexcept {
@@ -175,8 +179,7 @@ template<typename T> coordinate<T> simulation_state<T>::compute_mean_kinetic_mom
 }
 
 /**
- *
- * @tparam T
+ * Constructor, initializes the system.
  * @param particules
  * @param config
  */
@@ -198,20 +201,25 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
         return coordinate<T>(generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1), generate_random_value<T>(-1, 1));
     });
 
-
+    // Fixes the barycenter.
     fixup_kinetic_momentums();
+
+    // Computes the temperature of the systme and scales the momentums to reach the target temperature.
     fixup_temperature(config_.T0);
 }
 
 /**
- *
- * @tparam T
+ * Runs one iteration of the simulation.
  */
 template<typename T> void simulation_state<T>::run_iter() {
     ++simulation_idx;
+
+    // Running the velocity verlet algorithm and getting back the potential energy as well as the sum of the forces.
     auto [summed_forces, lennard_jones_energy] = run_velocity_verlet_sequential(coordinates_, forces_, momentums_, config_);
     forces_sum_ = summed_forces;
     lennard_jones_energy_ = lennard_jones_energy;
+
+    // Update and fixe up the temperature
     update_kinetic_energy_and_temp();
     apply_berendsen_thermostate();
     update_kinetic_energy_and_temp();
