@@ -16,6 +16,7 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
     auto energy = T{};
 
     for (auto i = 0U; i < particules.size(); ++i) {
+        forces[i] = {};
         auto this_particule_energy = T{};
         const auto this_particule = particules[i];
         for (auto j = 0U; j < particules.size(); ++j) {

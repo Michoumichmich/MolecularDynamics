@@ -9,14 +9,14 @@
  */
 template<typename T> class simulation_state {
 private:
-    const simulation_configuration<T> config_;
-    size_t simulation_idx;
-    std::vector<coordinate<T>> coordinates_;
-    std::vector<coordinate<T>> momentums_;   // Vi * mi
-    std::vector<coordinate<T>> forces_;      // Lennard Jones Field
-    coordinate<T> forces_sum_;
-    T lennard_jones_energy_;
-    T kinetic_temperature_;
+    const simulation_configuration<T> config_;   //
+    size_t simulation_idx;                       //
+    std::vector<coordinate<T>> coordinates_;     //
+    std::vector<coordinate<T>> momentums_;       // Vi * mi
+    std::vector<coordinate<T>> forces_;          // Lennard Jones Field
+    coordinate<T> forces_sum_;                   //
+    T lennard_jones_energy_;                     //
+    T kinetic_temperature_;                      //
     T kinetic_energy_;
 
 
@@ -58,7 +58,7 @@ public:
      */
     void run_iter();
 
-    coordinate<T> compute_mean_kinetic_momentum() const noexcept;
+    [[nodiscard]] coordinate<T> compute_mean_kinetic_momentum() const noexcept;
 
     friend std::ostream& operator<<(std::ostream& os, const simulation_state& state) {
         auto mean_kinetic_momentum = state.compute_mean_kinetic_momentum();

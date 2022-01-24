@@ -14,18 +14,18 @@ template<typename T> struct simulation_configuration {
     static constexpr T m_i = 18;                            // Mass of a particle in some unit
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
-    static constexpr T dt = 1e-15;                          // 1 fs
+    static constexpr T dt = 0.1;                            // 0.1 fs, should be 1.
     static constexpr T T0 = 300;                            // 300 Kelvin
 
     // Berdensten thermostate
-    static constexpr T gamma = 0.01;        // Gamma for the berdensten thermostate
+    static constexpr T gamma = 0.1;         // Gamma for the berdensten thermostate, should be 0.01
     static constexpr size_t m_step = 100;   //
 
     // Lennard jones field config
     static constexpr T r_star_ = static_cast<T>(3);           //
     static constexpr T epsilon_star_ = static_cast<T>(0.2);   //
     bool use_cutoff = true;                                   //
-    T r_cut_ = static_cast<T>(10);                            //
+    T r_cut_ = static_cast<T>(10);                            // 10 Angstroms
     int n_symetries = 27;                                     //
     T L_ = static_cast<T>(30);                                //
 
@@ -52,12 +52,24 @@ template<typename T> struct simulation_configuration {
     }
 };
 
+/**
+ * Converts a vector of coordinates<Src_T> to a vector of coordinates<Dst_T>
+ * @tparam Dst_T
+ * @tparam Src_T
+ * @param in
+ * @return
+ */
 template<typename Dst_T, typename Src_T> static inline std::vector<coordinate<Dst_T>> coordinate_vector_cast(const std::vector<coordinate<Src_T>>& in) {
     std::vector<coordinate<Dst_T>> out(in.size());
     for (unsigned int i = 0; i < in.size(); ++i) { out[i] = coordinate<Dst_T>{static_cast<Dst_T>(in[i].x()), static_cast<Dst_T>(in[i].y()), static_cast<Dst_T>(in[i].z())}; }
     return out;
 }
 
+/**
+ * Reads the particule file and returns a vector of coordinates (doubles)
+ * @param filename
+ * @return
+ */
 static inline std::vector<coordinate<double>> parse_particule_file(std::string&& filename) {
     auto fs = std::ifstream(filename);
     if (!fs.is_open()) throw std::runtime_error("File not found");
@@ -74,6 +86,11 @@ static inline std::vector<coordinate<double>> parse_particule_file(std::string&&
     return coordinates;
 }
 
+/**
+ * Computes the symetries
+ * @tparam N
+ * @return
+ */
 template<int N> static inline constexpr std::array<sycl::vec<int, 3U>, N> get_symetries() {
     static_assert(N == 1 || N == 27 || N == 125);
     if constexpr (N == 1) {
