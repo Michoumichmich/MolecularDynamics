@@ -15,15 +15,15 @@ template<typename T> struct simulation_configuration {
     static constexpr T m_i = 18;                            // Mass of a particle in some unit
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
-    static constexpr T dt = 1;                              // 0.1 fs, should be 1.
+    static constexpr T dt = 0.01;                           // 0.1 fs, should be 1.
     static constexpr T T0 = 300;                            // 300 Kelvin
 
     // Berdensten thermostate
-    static constexpr T gamma = 0.01;        // Gamma for the berdensten thermostate, should be 0.01
-    static constexpr size_t m_step = 100;   //
+    static constexpr T gamma = 0.1;        // Gamma for the berdensten thermostate, should be 0.01
+    static constexpr size_t m_step = 90;   // Should be 100
 
     // Lennard jones field config
-    static constexpr T r_star_ = static_cast<T>(3);           //
+    static constexpr T r_star_ = static_cast<T>(3);           // R* distance: 3A
     static constexpr T epsilon_star_ = static_cast<T>(0.2);   //
     bool use_cutoff = true;                                   //
     T r_cut_ = static_cast<T>(10);                            // 10 Angstroms
@@ -31,7 +31,7 @@ template<typename T> struct simulation_configuration {
     T L_ = static_cast<T>(30);                                //
 
     // PDB Out settings
-    int iter_per_frame = 10;                                       //
+    int iter_per_frame = 50;                                       //
     std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.
 
     [[nodiscard]] std::string config_hash() const {

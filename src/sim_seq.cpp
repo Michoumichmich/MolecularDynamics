@@ -14,7 +14,7 @@ static inline auto compute_lennard_jones_field_inplace_sequential(const std::vec
                                                                   std::vector<coordinate<T>>& forces) {
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
-
+#pragma omp parallel for default(none) shared(particules, config, forces) reduction(+ : energy, summed_forces)
     for (auto i = 0U; i < particules.size(); ++i) {
         forces[i] = {};
         auto this_particule_energy = T{};
