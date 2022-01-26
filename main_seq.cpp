@@ -3,7 +3,7 @@
 template<typename T> void run_example(const std::vector<coordinate<T>>& coordinates, simulation_configuration<T> config) {
     std::cout << config << std::endl;
     auto simulation = simulation_state<T>(coordinates, config);
-    for (int i = 0; i < 15000; ++i) {
+    for (int i = 0; i < 100000; ++i) {
         std::cout << simulation;
         simulation.run_iter();
     }
@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
 
 #ifdef BUILD_DOUBLE
     //run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 1});
-    run_example(coordinates_double, {.use_cutoff = true, .r_cut_ = 40, .n_symetries = 27, .L_ = 40, .iter_per_frame = 20});
+    run_example(coordinates_double, {.use_cutoff = true, .r_cut_ = 30, .n_symetries = 27, .L_ = 35, .iter_per_frame = 20});
     // run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 1});
     // run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27});
     // run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});

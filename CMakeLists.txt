@@ -6,8 +6,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(WARNINGS "-Wall -Wextra -Wno-assume -Wno-unused-command-line-argument -Wno-tautological-constant-compare")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS} -fopenmp")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -fPIE ${WARNINGS}")
+
+if (APPLE)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Xpreprocessor -fopenmp -I/usr/local/include -L/usr/local/lib -lomp")
+else ()
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp")
+endif ()
+
 
 set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda,spir64 -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Xcuda-ptxas -v -fgpu-inline-threshold=10000)
 # -fcuda-approx-transcendentals -ffp-contract=fast -fcuda-flush-denormals-to-zero -Xsycl-target-backend=spir64_x86_64 --march=avx
