@@ -1,5 +1,6 @@
 #pragma once
 
+#include <internal/pdb_writer.hpp>
 #include <internal/sim_common.hpp>
 #include <iomanip>
 
@@ -18,7 +19,7 @@ private:
     T lennard_jones_energy_;                     //
     T kinetic_temperature_;                      //
     T kinetic_energy_;
-
+    pdb_writer out;
 
 private:
     /**

@@ -190,7 +190,7 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
       simulation_idx(0),                                           //
       coordinates_(particules),                                    //
       momentums_(std::vector<coordinate<T>>(particules.size())),   //
-      forces_(std::vector<coordinate<T>>(particules.size())) {
+      forces_(std::vector<coordinate<T>>(particules.size())), out(config.out_file) {
 
     // Initializes the forces field.
     auto [sums, energy] = compute_lennard_jones_field(coordinates_, config_, forces_);
@@ -207,6 +207,7 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
 
     // Computes the temperature of the systme and scales the momentums to reach the target temperature.
     fixup_temperature(config_.T0);
+    out.store_new_iter(coordinates_, simulation_idx);
 }
 
 /**
@@ -224,6 +225,8 @@ template<typename T> void simulation_state<T>::run_iter() {
     update_kinetic_energy_and_temp();
     apply_berendsen_thermostate();
     update_kinetic_energy_and_temp();
+
+    if (simulation_idx % config_.store_periodicity == 0) { out.store_new_iter(coordinates_, simulation_idx); }
 }
 
 #ifdef BUILD_HALF

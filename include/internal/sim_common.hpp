@@ -29,6 +29,10 @@ template<typename T> struct simulation_configuration {
     int n_symetries = 27;                                     //
     T L_ = static_cast<T>(30);                                //
 
+    // PDB Out settings
+    int store_periodicity = 10;   //
+    std::string out_file = std::to_string(L_) + '_' + std::to_string(n_symetries) + '_' + std::to_string(r_cut_) + '_' + std::to_string(use_cutoff) +
+                           "_default.pdb";   // Set an empty name to not save the result.
 
     friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
         constexpr auto type_to_string = []() -> std::string {

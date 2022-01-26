@@ -52,18 +52,19 @@ target_link_libraries(ISM_SYCL PRIVATE ISM_SYCL_backend)
 
 include(FetchContent)
 
-# Externally provided libraries
-FetchContent_Declare(googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG main)
+if (BUILD_TESTING)
+    # Externally provided libraries
+    FetchContent_Declare(googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG main)
 
-FetchContent_Declare(googlebenchmark
-        GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG main) # need master for benchmark::benchmark
+    FetchContent_Declare(googlebenchmark
+            GIT_REPOSITORY https://github.com/google/benchmark.git
+            GIT_TAG main) # need master for benchmark::benchmark
 
-FetchContent_MakeAvailable(
-        googletest
-        googlebenchmark)
+    FetchContent_MakeAvailable(
+            googletest
+            googlebenchmark)
 
-include(benchmarks/CMakeLists.txt)
-
+    include(benchmarks/CMakeLists.txt)
+endif ()
