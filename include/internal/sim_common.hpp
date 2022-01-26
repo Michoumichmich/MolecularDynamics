@@ -16,7 +16,7 @@ template<typename T> struct simulation_configuration {
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
     static constexpr T dt = 1;                              // 0.1 fs, should be 1.
-    static constexpr T T0 = 310;                            // 300 Kelvin
+    static constexpr T T0 = 300;                            // 300 Kelvin
 
     // Berdensten thermostate
     static constexpr bool use_berdensten_thermostate = true;
@@ -27,7 +27,7 @@ template<typename T> struct simulation_configuration {
     static constexpr T r_star_ = static_cast<T>(3);           // R* distance: 3A
     static constexpr T epsilon_star_ = static_cast<T>(0.2);   //
     static constexpr bool use_cutoff = true;                  //
-    static constexpr T r_cut_ = static_cast<T>(30);           // Should be 10 Angstroms
+    static constexpr T r_cut_ = static_cast<T>(35);           // Should be 10 Angstroms
     static constexpr int n_symetries = 27;                    //
     static constexpr T L_ = static_cast<T>(35);               // 30 in the subject
 
