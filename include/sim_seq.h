@@ -17,22 +17,34 @@ private:
     std::vector<coordinate<T>> forces_;          // Lennard Jones Field
     coordinate<T> forces_sum_;                   //
     T lennard_jones_energy_;                     //
-    T kinetic_temperature_;                      //
-    T kinetic_energy_;
-    pdb_writer out;
-    double avg_iter_duration = 1;
+    pdb_writer out;                              //
+
+    // Mutable variables are the variables that are easily and often re-computed based on the simulation
+    // they should be updated as often as possible, but don't really affect the simulation at all
+    mutable T kinetic_temperature_;         //
+    mutable T kinetic_energy_;              //
+    mutable double avg_iter_duration = 1;   //
+    mutable double total_energy = 0;        //
+    mutable double avg_delta_energy = 0;    //
 
 private:
     /**
      *
      */
-    void update_kinetic_energy_and_temp() noexcept;
+    void update_kinetic_energy_and_temp() const noexcept;
 
     /**
      *
      * @return
      */
     [[nodiscard]] inline size_t degrees_of_freedom() const { return 3 * coordinates_.size() - 3; }
+
+    void update_energy_metrics() const {
+        constexpr static double aging_coeff = 0.01;
+        double prev_energy = total_energy;
+        total_energy = kinetic_energy_ + lennard_jones_energy_;
+        avg_delta_energy = ((total_energy - prev_energy) * aging_coeff + avg_delta_energy) / (1 + aging_coeff);
+    }
 
     /**
      *
@@ -64,15 +76,16 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const simulation_state& state) {
         auto mean_kinetic_momentum = state.compute_mean_kinetic_momentum();
-        os << std::setprecision(10) << "[" << state.simulation_idx << "] "                                                                                                   //
-           << "E_tot: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_ + state.lennard_jones_energy_                                                         //
-           << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                                                                                 //
-           << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                                                                       //
-           << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                                                                               //
-           << ", Field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))                                      //
-           << ", Barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(mean_kinetic_momentum, mean_kinetic_momentum)) / state.config_.m_i   //
-           << ", Time: " << state.config_.dt * state.simulation_idx << " fs"                                                                                                 //
-           << ", Speed: " << std::setprecision(3) << 1.0 / state.avg_iter_duration << " iter/s."                                                                             //
+        os << std::setprecision(10) << "[" << state.simulation_idx << "] "                                                                   //
+           << "E_tot: " << std::setw(13) << std::setfill(' ') << state.total_energy                                                          //
+           << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                                                 //
+           << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                                       //
+           << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                                               //
+           << ", Field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(state.forces_sum_)                                  //
+           << ", Barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(mean_kinetic_momentum) / state.config_.m_i   //
+           << ", Avg_delta_energy: " << std::setprecision(5) << state.avg_delta_energy                                                       //
+           << ", Time: " << state.config_.dt * state.simulation_idx << " fs"                                                                 //
+           << ", Speed: " << std::setprecision(3) << 1.0 / state.avg_iter_duration << " iter/s."                                             //
            << '\n';
         return os;
     }

@@ -130,7 +130,7 @@ static inline auto run_velocity_verlet_sequential(std::vector<coordinate<T>>& pa
  * Updates the kinectic energy and temperature based on current momentums.
  * @tparam T
  */
-template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() noexcept {
+template<typename T> void simulation_state<T>::update_kinetic_energy_and_temp() const noexcept {
     T sum = {};
     for (const auto& momentum: momentums_) { sum += sycl::dot(momentum, momentum); }
     kinetic_energy_ = sum / (2 * config_.conversion_force * config_.m_i);
@@ -214,6 +214,7 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
     // Computes the temperature of the systme and scales the momentums to reach the target temperature.
     fixup_temperature(config_.T0);
     out.store_new_iter(coordinates_, simulation_idx);
+    update_energy_metrics();
 }
 
 /**
@@ -237,6 +238,7 @@ template<typename T> void simulation_state<T>::run_iter() {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()) * 1e-9;
     avg_iter_duration = (avg_iter_duration + duration) / 2;
+    update_energy_metrics();
 }
 
 #ifdef BUILD_HALF
