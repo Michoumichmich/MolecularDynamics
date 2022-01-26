@@ -31,32 +31,33 @@ template<typename T> struct simulation_configuration {
     T L_ = static_cast<T>(30);                                //
 
     // PDB Out settings
-    int iter_per_frame = 10;                                 //
-    std::string out_file = config_hash() + "_default.pdb";   // Set an empty name to not save the result.
+    int iter_per_frame = 10;                                       //
+    std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.
 
     [[nodiscard]] std::string config_hash() const {
-        return "L:"s + std::to_string(L_)                //
-             + "_sym:" + std::to_string(n_symetries)     //
-             + "_rcut:" + std::to_string(r_cut_)         //
-             + "_usecut:" + std::to_string(use_cutoff)   //
-             + "_dt:" + std::to_string(dt)               //
-             + "_period:" + std::to_string(iter_per_frame);
+        return "L:"s + std::to_string(L_)                    //
+             + "_sym:" + std::to_string(n_symetries)         //
+             + "_rcut:" + std::to_string(r_cut_)             //
+             + "_usecut:" + std::to_string(use_cutoff)       //
+             + "_dt:" + std::to_string(dt)                   //
+             + "_period:" + std::to_string(iter_per_frame)   //
+             + "_" + type_to_string();
+    }
+
+    static constexpr auto type_to_string() noexcept {
+        if constexpr (std::is_same_v<T, sycl::half>) {
+            return "sycl::half";
+        } else if constexpr (std::is_same_v<T, float>) {
+            return "float";
+        } else if constexpr (std::is_same_v<T, double>) {
+            return "double";
+        } else {
+            fail_to_compile<T>();
+        }
     }
 
 
     friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
-        constexpr auto type_to_string = []() -> std::string {
-            if constexpr (std::is_same_v<T, sycl::half>) {
-                return "sycl::half";
-            } else if constexpr (std::is_same_v<T, float>) {
-                return "float";
-            } else if constexpr (std::is_same_v<T, double>) {
-                return "double";
-            } else {
-                fail_to_compile<T>();
-            }
-        };
-
         os << "Cutoff: " << config.use_cutoff           //
            << ", r_cut: " << config.r_cut_              //
            << ", n_symetries: " << config.n_symetries   //
