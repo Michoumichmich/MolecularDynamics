@@ -34,7 +34,7 @@ public:
         fs << "TER \n"
               "ENDMDL\n";
         fs.flush();
-        std::cout << "[PDB_WRITER] Frame: " << i << "sent to:" << filename_ << std::endl;
+        std::cout << "[PDB_WRITER] Frame: " << i << "sent to: " << filename_ << std::endl;
     }
 
 

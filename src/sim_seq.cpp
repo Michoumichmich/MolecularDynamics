@@ -163,10 +163,16 @@ template<typename T> void simulation_state<T>::fixup_kinetic_momentums() noexcep
  * @tparam T
  */
 template<typename T> void simulation_state<T>::apply_berendsen_thermostate() noexcept {
-    if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
-    //const T coeff = config_.gamma * sycl::sqrt(std::abs((config_.T0 / kinetic_temperature_) - 1));
-    const T coeff = config_.gamma * ((config_.T0 / kinetic_temperature_) - 1);
-    for (auto& momentum: momentums_) { momentum += momentum * coeff; }
+    if constexpr (!simulation_configuration<T>::use_berdensten_thermostate) {
+        return;
+    } else {
+        if (simulation_idx % config_.m_step != 0 || simulation_idx == 0) { return; }
+        update_kinetic_energy_and_temp();
+        //const T coeff = config_.gamma * sycl::sqrt(std::abs((config_.T0 / kinetic_temperature_) - 1));
+        const T coeff = config_.gamma * ((config_.T0 / kinetic_temperature_) - 1);
+        for (auto& momentum: momentums_) { momentum += momentum * coeff; }
+        std::cout << "[Berendsen] Thermostate applied with coeff: " << coeff << std::endl;
+    }
 }
 
 /**
@@ -222,7 +228,6 @@ template<typename T> void simulation_state<T>::run_iter() {
     lennard_jones_energy_ = lennard_jones_energy;
 
     // Update and fixe up the temperature
-    update_kinetic_energy_and_temp();
     apply_berendsen_thermostate();
     update_kinetic_energy_and_temp();
 

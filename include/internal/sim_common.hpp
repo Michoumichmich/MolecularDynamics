@@ -15,12 +15,13 @@ template<typename T> struct simulation_configuration {
     static constexpr T m_i = 18;                            // Mass of a particle in some unit
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
-    static constexpr T dt = 0.01;                           // 0.1 fs, should be 1.
+    static constexpr T dt = 1;                              // 0.1 fs, should be 1.
     static constexpr T T0 = 300;                            // 300 Kelvin
 
     // Berdensten thermostate
-    static constexpr T gamma = 0.1;        // Gamma for the berdensten thermostate, should be 0.01
-    static constexpr size_t m_step = 90;   // Should be 100
+    static constexpr bool use_berdensten_thermostate = true;
+    static constexpr T gamma = 0.01;        // Gamma for the berdensten thermostate, should be 0.01
+    static constexpr size_t m_step = 100;   // Should be 100
 
     // Lennard jones field config
     static constexpr T r_star_ = static_cast<T>(3);           // R* distance: 3A

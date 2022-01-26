@@ -19,11 +19,11 @@ int main(int argc, char** argv) {
 
 #ifdef BUILD_DOUBLE
     //run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 1});
-    run_example(coordinates_double, {.use_cutoff = true, .r_cut_ = 40, .n_symetries = 27, .L_ = 50, .iter_per_frame = 200});
-    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 1});
-    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27});
-    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});
-    run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 27, .L_ = 50});
+    run_example(coordinates_double, {.use_cutoff = true, .r_cut_ = 40, .n_symetries = 27, .L_ = 40, .iter_per_frame = 20});
+    // run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 1});
+    // run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27});
+    // run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});
+    // run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 27, .L_ = 50});
 #endif
 
 #ifdef BUILD_FLOAT
