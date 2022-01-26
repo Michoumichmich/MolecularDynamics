@@ -20,6 +20,7 @@ private:
     T kinetic_temperature_;                      //
     T kinetic_energy_;
     pdb_writer out;
+    double avg_iter_duration = 1;
 
 private:
     /**
@@ -68,9 +69,10 @@ public:
            << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                                                                                 //
            << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                                                                       //
            << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                                                                               //
-           << ", field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))                                      //
-           << ", barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(mean_kinetic_momentum, mean_kinetic_momentum)) / state.config_.m_i   //
-           << ", time: " << state.config_.dt * state.simulation_idx << "fs."                                                                                                 //
+           << ", Field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))                                      //
+           << ", Barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(mean_kinetic_momentum, mean_kinetic_momentum)) / state.config_.m_i   //
+           << ", Time: " << state.config_.dt * state.simulation_idx << " fs"                                                                                                 //
+           << ", Speed: " << std::setprecision(3) << 1.0 / state.avg_iter_duration << " iter/s."                                                                             //
            << '\n';
         return os;
     }

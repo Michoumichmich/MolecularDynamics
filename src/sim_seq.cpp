@@ -220,6 +220,7 @@ simulation_state<T>::simulation_state(const std::vector<coordinate<T>>& particul
  * Runs one iteration of the simulation.
  */
 template<typename T> void simulation_state<T>::run_iter() {
+    auto begin = std::chrono::high_resolution_clock::now();
     ++simulation_idx;
 
     // Running the velocity verlet algorithm and getting back the potential energy as well as the sum of the forces.
@@ -232,6 +233,10 @@ template<typename T> void simulation_state<T>::run_iter() {
     update_kinetic_energy_and_temp();
 
     if (simulation_idx % config_.iter_per_frame == 0) { out.store_new_iter(coordinates_, simulation_idx); }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()) * 1e-9;
+    avg_iter_duration = (avg_iter_duration + duration) / 2;
 }
 
 #ifdef BUILD_HALF
