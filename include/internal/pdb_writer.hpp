@@ -8,7 +8,7 @@ class pdb_writer {
 
 
 public:
-    explicit pdb_writer(const std::string& file_name) : fs(file_name) {
+    explicit pdb_writer(const std::string& file_name) : filename_(file_name), fs(file_name) {
         if (file_name.empty()) { std::cout << "Empty file name given. " << std::endl; }
         //   fs << "CRYST1 30 30 30 90.00 90.00 90.00 P 1\n";
         //   fs.flush();
@@ -34,9 +34,11 @@ public:
         fs << "TER \n"
               "ENDMDL\n";
         fs.flush();
+        std::cout << "[PDB_WRITER] Frame: " << i << "sent to:" << filename_ << std::endl;
     }
 
 
 private:
+    std::string filename_;
     std::ofstream fs;
 };

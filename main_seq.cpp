@@ -3,7 +3,7 @@
 template<typename T> void run_example(const std::vector<coordinate<T>>& coordinates, simulation_configuration<T> config) {
     std::cout << config << std::endl;
     auto simulation = simulation_state<T>(coordinates, config);
-    for (int i = 0; i < 3000000; ++i) {
+    for (int i = 0; i < 150000; ++i) {
         std::cout << simulation;
         simulation.run_iter();
     }

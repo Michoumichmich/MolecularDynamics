@@ -63,14 +63,15 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const simulation_state& state) {
         auto mean_kinetic_momentum = state.compute_mean_kinetic_momentum();
-        os << std::setprecision(10) << "[" << state.simulation_idx << "] "                          //
-           << "E_tot: " << state.kinetic_energy_ + state.lennard_jones_energy_                      //
-           << ", Temp: " << state.kinetic_temperature_                                              //
-           << ", E_c: " << state.kinetic_energy_                                                    //
-           << ", E_pot: " << state.lennard_jones_energy_                                            //
-           << ", field_sum_norm: " << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))   //
-           << ", barycenter_speed_norm " << sycl::sqrt(sycl::dot(mean_kinetic_momentum, mean_kinetic_momentum)) / state.config_.m_i << '\n';
-        // for (size_t i = 0; i <10; ++i) { os << state.coordinates_[i].x() << ' '; } os << '\n';
+        os << std::setprecision(10) << "[" << state.simulation_idx << "] "                                                                                                   //
+           << "E_tot: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_ + state.lennard_jones_energy_                                                         //
+           << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                                                                                 //
+           << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                                                                       //
+           << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                                                                               //
+           << ", field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(state.forces_sum_, state.forces_sum_))                                      //
+           << ", barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::sqrt(sycl::dot(mean_kinetic_momentum, mean_kinetic_momentum)) / state.config_.m_i   //
+           << ", time: " << state.config_.dt * state.simulation_idx << "fs."                                                                                                 //
+           << '\n';
         return os;
     }
 };
