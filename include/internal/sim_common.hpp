@@ -7,6 +7,7 @@
 #include <tuple>
 #include <vector>
 
+using namespace std::string_literals;
 
 template<typename T> using coordinate = sycl::vec<T, 3U>;
 
@@ -14,11 +15,11 @@ template<typename T> struct simulation_configuration {
     static constexpr T m_i = 18;                            // Mass of a particle in some unit
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
-    static constexpr T dt = 0.1;                            // 0.1 fs, should be 1.
+    static constexpr T dt = 1;                              // 0.1 fs, should be 1.
     static constexpr T T0 = 300;                            // 300 Kelvin
 
     // Berdensten thermostate
-    static constexpr T gamma = 0.1;         // Gamma for the berdensten thermostate, should be 0.01
+    static constexpr T gamma = 0.01;        // Gamma for the berdensten thermostate, should be 0.01
     static constexpr size_t m_step = 100;   //
 
     // Lennard jones field config
@@ -30,9 +31,18 @@ template<typename T> struct simulation_configuration {
     T L_ = static_cast<T>(30);                                //
 
     // PDB Out settings
-    int store_periodicity = 10;   //
-    std::string out_file = std::to_string(L_) + '_' + std::to_string(n_symetries) + '_' + std::to_string(r_cut_) + '_' + std::to_string(use_cutoff) +
-                           "_default.pdb";   // Set an empty name to not save the result.
+    int iter_per_frame = 10;                                 //
+    std::string out_file = config_hash() + "_default.pdb";   // Set an empty name to not save the result.
+
+    [[nodiscard]] std::string config_hash() const {
+        return "L:"s + std::to_string(L_)                //
+             + "_sym:" + std::to_string(n_symetries)     //
+             + "_rcut:" + std::to_string(r_cut_)         //
+             + "_usecut:" + std::to_string(use_cutoff)   //
+             + "_dt:" + std::to_string(dt)               //
+             + "_period:" + std::to_string(iter_per_frame);
+    }
+
 
     friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
         constexpr auto type_to_string = []() -> std::string {

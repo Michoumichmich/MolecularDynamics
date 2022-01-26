@@ -226,7 +226,7 @@ template<typename T> void simulation_state<T>::run_iter() {
     apply_berendsen_thermostate();
     update_kinetic_energy_and_temp();
 
-    if (simulation_idx % config_.store_periodicity == 0) { out.store_new_iter(coordinates_, simulation_idx); }
+    if (simulation_idx % config_.iter_per_frame == 0) { out.store_new_iter(coordinates_, simulation_idx); }
 }
 
 #ifdef BUILD_HALF

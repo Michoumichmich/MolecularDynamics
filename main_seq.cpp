@@ -18,8 +18,8 @@ int main(int argc, char** argv) {
 
 
 #ifdef BUILD_DOUBLE
-    // run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 1});
-    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});
+    //run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 1});
+    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27, .L_ = 50, .r_cut_ = 40});
     run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 1});
     run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27});
     run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});
