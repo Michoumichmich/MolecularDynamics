@@ -25,7 +25,8 @@ public:
             char alt = ' ';
             char chain = ' ';
             const char* empty = " ";
-            std::sprintf(line, atom_line_oformat_, j, "C", alt, empty, chain, 0, ' ', particule.x(), particule.y(), particule.z(), 1., 1., empty, empty, "C");
+            std::sprintf(line, atom_line_oformat_, j, "C", alt, empty, chain, 0, ' ', (double) particule.x(), (double) particule.y(), (double) particule.z(), 1., 1., empty, empty,
+                         "C");
             fs << line << '\n';
         }
         fs << "TER \n"

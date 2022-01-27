@@ -16,7 +16,7 @@ else ()
 endif ()
 
 
-set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda,spir64 -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Xcuda-ptxas -v -fgpu-inline-threshold=10000)
+set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda,spir64 -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Wno-unknown-cuda-version -Wno-linker-warnings -Xcuda-ptxas -v -fgpu-inline-threshold=10000 -DNDEBUG)
 # -fcuda-approx-transcendentals -ffp-contract=fast -fcuda-flush-denormals-to-zero -Xsycl-target-backend=spir64_x86_64 --march=avx
 #set(DPCPP_FLAGS -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfx902 -fsycl-id-queries-fit-in-int)
 #set(DPCPP_FLAGS -fsycl-targets=spir64 -fsycl-id-queries-fit-in-int)

@@ -29,7 +29,7 @@ template<typename T> struct configuration {
     static constexpr T L_ = static_cast<T>(35);               // 30 in the subject
 
     // PDB Out settings
-    int iter_per_frame = 50;                                       //
+    int iter_per_frame = 100;                                      //
     std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.
 
     [[nodiscard]] std::string config_hash() const {
