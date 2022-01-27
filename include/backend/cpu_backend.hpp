@@ -23,11 +23,17 @@ public:
     }
 
     inline void center_kinetic_momentums() override {
-        coordinate<T> mean{};   // Sum of vi * mi;
-        for (const auto& momentum: momentums_) { mean += momentum; }
-        mean /= momentums_.size();
+        auto mean = mean_kinetic_momentums();
         for (auto& momentum: momentums_) { momentum -= mean; }
     }
+
+
+    inline coordinate<T> mean_kinetic_momentums() const override {
+        coordinate<T> mean{};   // Sum of vi * mi;
+        for (const auto& momentum: momentums_) { mean += momentum; }
+        return mean / momentums_.size();
+    }
+
 
     [[nodiscard]] inline size_t get_particules_count() const override { return coordinates_.size(); }
 

@@ -71,16 +71,15 @@ public:
 
 
     friend std::ostream& operator<<(std::ostream& os, const molecular_dynamics& state) {
-        auto mean_kinetic_momentum = std::sqrt(state.backend_.get_momentums_squared_norm()) / state.backend_.get_particules_count();
-        os << std::setprecision(10) << "[" << state.simulation_idx_ << "] "                                                                         //
-           << "E_tot: " << std::setw(13) << std::setfill(' ') << state.total_energy_                                                                //
-           << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                                                        //
-           << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                                              //
-           << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                                                      //
-           << ", Field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(state.forces_sum_)                                         //
-           << ", Barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(mean_kinetic_momentum) / state.configuration_.m_i   //
-           << ", Avg_delta_energy: " << std::setprecision(5) << state.avg_delta_energy_                                                             //
-           << ", Time: " << state.configuration_.dt * state.simulation_idx_ << " fs"                                                                //
+        os << std::setprecision(10) << "[" << state.simulation_idx_ << "] "                                                                                           //
+           << "E_tot: " << std::setw(13) << std::setfill(' ') << state.total_energy_                                                                                  //
+           << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                                                                          //
+           << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                                                                //
+           << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                                                                        //
+           << ", Field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(state.forces_sum_)                                                           //
+           << ", Barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(state.backend_.mean_kinetic_momentums()) / state.configuration_.m_i   //
+           << ", Avg_delta_energy: " << std::setprecision(5) << state.avg_delta_energy_                                                                               //
+           << ", Time: " << state.configuration_.dt * state.simulation_idx_ << " fs"                                                                                  //
            << ", Speed: " << std::setprecision(3) << 1.0 / state.avg_iter_duration_ << " iter/s.";
         return os;
     }

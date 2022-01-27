@@ -44,6 +44,8 @@ public:
      */
     virtual void center_kinetic_momentums() = 0;
 
+    virtual coordinate<T> mean_kinetic_momentums() const = 0;
+
     /**
      *
      */
