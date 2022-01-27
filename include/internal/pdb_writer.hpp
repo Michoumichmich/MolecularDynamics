@@ -1,17 +1,16 @@
 #pragma once
 
-#include <fstream>
-#include <internal/sim_common.hpp>
+#include <internal/cpp_utils.hpp>
+#include <internal/sim_math.hpp>
 
+#include <fstream>
+
+namespace sim {
 
 class pdb_writer {
-
-
 public:
     explicit pdb_writer(const std::string& file_name) : filename_(file_name), fs(file_name) {
         if (file_name.empty()) { std::cout << "Empty file name given. " << std::endl; }
-        //   fs << "CRYST1 30 30 30 90.00 90.00 90.00 P 1\n";
-        //   fs.flush();
     }
 
     template<typename T> void store_new_iter(const std::vector<coordinate<T>> particules, int i) {
@@ -26,15 +25,14 @@ public:
             char alt = ' ';
             char chain = ' ';
             const char* empty = " ";
-            std::sprintf(line, atom_line_oformat_, j, "C", alt, empty, chain, 0, ' ', particule.x(), particule.y(), particule.z(), 1., 1., empty, empty, "C");
-
+            std::sprintf(line, atom_line_oformat_, j, "C", alt, empty, chain, 0, ' ', (double) particule.x(), (double) particule.y(), (double) particule.z(), 1., 1., empty, empty,
+                         "C");
             fs << line << '\n';
-            //  fs << "ATOM " << j << " C 0 " << std::fixed << std::setprecision(3) << particule.x() << " " << particule.y() << ' ' << particule.z() << "     MRES\n";
         }
         fs << "TER \n"
               "ENDMDL\n";
         fs.flush();
-        std::cout << "[PDB_WRITER] Frame: " << i << ", sent to: " << filename_ << std::endl;
+        std::cout << "[PDB_WRITER] Frame: " << i << ", sent to: " << filename_ << '\n';
     }
 
 
@@ -42,3 +40,4 @@ private:
     std::string filename_;
     std::ofstream fs;
 };
+}   // namespace sim
