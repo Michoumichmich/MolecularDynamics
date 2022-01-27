@@ -1,10 +1,8 @@
-#include <sim_sycl.h>
+#include <backend/sycl_backend.hpp>
 #include <utility>
-namespace internal {
 
-static inline auto compute_range_size(size_t size, size_t work_group_size) {
-    return sycl::nd_range<1>(work_group_size * ((size + work_group_size - 1) / work_group_size), work_group_size);
-}
+namespace sim {
+
 
 template<typename T> static inline void prefetch_constant(const T* ptr) {
 #if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
@@ -20,7 +18,7 @@ template<typename T> static inline void prefetch_constant(const T* ptr) {
 
 template<typename T, bool multiple_size, int n_sym> class leenard_jones_kernel {
 private:
-    const configuration<T> config_;
+    const sim::configuration<T> config_;
     const std::span<coordinate<T>> particules_;
     std::span<coordinate<T>> forces_field_;
     sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local> particules_tile_;
@@ -155,7 +153,6 @@ static inline auto internal_simulator_on_sycl(                                  
     return std::tuple(summed_forces, energy);
 }
 
-}   // namespace internal
 
 /**
  * Dispatches the computation to the proper kernel
@@ -187,9 +184,9 @@ std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(                 
 
     auto kernel_on_multiple_size = [&]<int multiple_size>() {
         if (config.n_symetries == 1) {
-            return internal::internal_simulator_on_sycl<T, multiple_size, 1>(q, work_group_size, particules_device_in, forces_device_out, config, evt);
+            return internal_simulator_on_sycl<T, multiple_size, 1>(q, work_group_size, particules_device_in, forces_device_out, config, evt);
         } else if (config.n_symetries == 27) {
-            return internal::internal_simulator_on_sycl<T, multiple_size, 27>(q, work_group_size, particules_device_in, forces_device_out, config, evt);
+            return internal_simulator_on_sycl<T, multiple_size, 27>(q, work_group_size, particules_device_in, forces_device_out, config, evt);
             //        } else if (config.n_symetries == 125) {
             //            return internal_simulator_on_sycl<T, multiple_size, 125>(q, work_group_size, particules, forces, config, evt);
         } else {
@@ -203,60 +200,95 @@ std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(                 
         return kernel_on_multiple_size.template operator()<false>();
     }
 }
-#ifdef BUILD_HALF
-template std::tuple<coordinate<sycl::half>, sycl::half> run_simulation_sycl_device_memory<sycl::half>(   //
-        sycl::queue& q,                                                                                  //
-        const std::span<coordinate<sycl::half>> particules, std::span<coordinate<sycl::half>> forces,    //
-        simulation_configuration<sycl::half> config, sycl::event evt);
-#endif
-#ifdef BUILD_FLOAT
-template std::tuple<coordinate<float>, float> run_simulation_sycl_device_memory<float>(                            //
-        sycl::queue& q,                                                                                            //
-        const std::span<coordinate<float>> particules_device_in, std::span<coordinate<float>> forces_device_out,   //
-        configuration<float> config, sycl::event evt);
-#endif
 
-#ifdef BUILD_DOUBLE
-template std::tuple<coordinate<double>, double> run_simulation_sycl_device_memory<double>(                           //
-        sycl::queue& q,                                                                                              //
-        const std::span<coordinate<double>> particules_device_in, std::span<coordinate<double>> forces_device_out,   //
-        configuration<double> config, sycl::event evt);
+template<typename T> T sycl_backend<T>::get_momentums_squared_norm() const {
+    T sum{};
+    {
+        auto sum_buffer = sycl::buffer<T>(&sum, 1U);
+        q.submit([&](sycl::handler& cgh) {
+#ifdef SYCL_IMPLEMENTATION_HIPSYCL
+             auto reduction_sum = sycl::reduction(sum_buffer.get_access(cgh), sycl::plus<T>{});
+#else
+             auto reduction_sum = sycl::reduction(sum_buffer, cgh, sycl::plus<>{});
 #endif
+             cgh.parallel_for(compute_range_size(size_, 32), reduction_sum, [=, momentums = momentums_.get(), size_ = size_](sycl::nd_item<1> it, auto& red) {
+                 auto i = it.get_global_linear_id();
+                 if (i < size_) { red.combine(sycl::dot(momentums[i], momentums[i])); }
+             });
+         }).wait_and_throw();
+    }
+    return sum;
+}
 
-/**
- * Launches computation on host memory
- * @tparam T
- * @param q
- * @param config
- * @param particules_host
- * @return
- */
-template<typename T>
-std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sycl(   //
-        sycl::queue& q,                                                         //
-        configuration<T> config, const std::vector<coordinate<T>>& particules_host) {
-    auto particules_device = std::span(sycl::malloc_device<coordinate<T>>(particules_host.size(), q), particules_host.size());
-    auto copy_evt = q.copy(particules_host.data(), particules_device.data(), particules_device.size());
-    auto forces_device = std::span(sycl::malloc_device<coordinate<T>>(particules_host.size(), q), particules_host.size());
-    auto [summed_forces, energy] = run_simulation_sycl_device_memory(q, particules_device, forces_device, config, copy_evt);
-    auto forces_out = std::vector<coordinate<T>>(particules_host.size());
-    q.copy(forces_device.data(), forces_out.data(), forces_device.size()).wait();
-    sycl::free(particules_device.data(), q);
-    sycl::free(forces_device.data(), q);
-    return std::tuple(forces_out, summed_forces, energy);
+template<typename T> coordinate<T> sycl_backend<T>::mean_kinetic_momentums() const {
+    coordinate<T> mean{};   // Sum of vi * mi;
+    {
+        auto x_reduction_buffer = sycl::buffer<T>(&mean.x(), 1U);
+        auto y_reduction_buffer = sycl::buffer<T>(&mean.y(), 1U);
+        auto z_reduction_buffer = sycl::buffer<T>(&mean.z(), 1U);
+        q.submit([&](sycl::handler& cgh) {
+#ifdef SYCL_IMPLEMENTATION_HIPSYCL
+             auto reduction_x = sycl::reduction(x_reduction_buffer.get_access(cgh), sycl::plus<T>{});
+             auto reduction_y = sycl::reduction(y_reduction_buffer.get_access(cgh), sycl::plus<T>{});
+             auto reduction_z = sycl::reduction(z_reduction_buffer.get_access(cgh), sycl::plus<T>{});
+#else
+             auto reduction_x = sycl::reduction(x_reduction_buffer, cgh, sycl::plus<>{});
+             auto reduction_y = sycl::reduction(y_reduction_buffer, cgh, sycl::plus<>{});
+             auto reduction_z = sycl::reduction(z_reduction_buffer, cgh, sycl::plus<>{});
+#endif
+             cgh.parallel_for(compute_range_size(size_, 32), reduction_x, reduction_y, reduction_z,   //
+                              [=, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it, auto& x, auto& y, auto& z) {
+                                  auto i = it.get_global_linear_id();
+                                  if (i < size_) {
+                                      auto momentum = momentums[i];
+                                      x.combine(momentum.x());
+                                      y.combine(momentum.y());
+                                      z.combine(momentum.z());
+                                  }
+                              });
+         }).wait_and_throw();
+    }
+    return mean / momentums_.size();
+}
+
+template<typename T> void sycl_backend<T>::randinit_momentums(T min, T max) {
+    std::generate(tmp_buf_.begin(), tmp_buf_.end(), [=]() {   //
+        return coordinate<T>(internal::generate_random_value<T>(min, max), internal::generate_random_value<T>(min, max), internal::generate_random_value<T>(min, max));
+    });
+    q.copy(tmp_buf_.data(), momentums_.get(), size_).wait();
+}
+
+template<typename T> void sycl_backend<T>::center_kinetic_momentums() {
+    auto mean = mean_kinetic_momentums();
+    q.parallel_for(compute_range_size(size_, 32), [=, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
+         auto i = it.get_global_linear_id();
+         if (i < size_) { momentums[i] -= mean; }
+     }).wait();
+}
+
+template<typename T> void sycl_backend<T>::apply_multiplicative_correction_to_momentums(T coeff) {
+    q.parallel_for(compute_range_size(size_, 32), [=, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
+         auto i = it.get_global_linear_id();
+         if (i < size_) { momentums[i] *= coeff; }
+     }).wait();
+}
+
+template<typename T> void sycl_backend<T>::store_particules_coordinates(pdb_writer& writer, size_t i) const {
+    q.copy(coordinates_.get(), tmp_buf_.data(), size_).wait();
+    writer.store_new_iter(tmp_buf_, i);
 }
 
 #ifdef BUILD_HALF
-template std::tuple<std::vector<coordinate<sycl::half>>, coordinate<sycl::half>, sycl::half>   //
-run_simulation_sycl<sycl::half>(sycl::queue& q, simulation_configuration<sycl::half> config, const std::vector<coordinate<sycl::half>>& particules_host);
+template class sycl_backend<sycl::half>;
 #endif
 
 #ifdef BUILD_FLOAT
-template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   //
-run_simulation_sycl<float>(sycl::queue& q, configuration<float> config, const std::vector<coordinate<float>>& particules_host);
+template class sycl_backend<float>;
 #endif
 
 #ifdef BUILD_DOUBLE
-template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
-run_simulation_sycl<double>(sycl::queue& q, configuration<double> config, const std::vector<coordinate<double>>& particules_host);
+template class sycl_backend<double>;
 #endif
+
+
+}   // namespace sim

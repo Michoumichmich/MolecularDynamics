@@ -7,11 +7,8 @@ namespace sim {
 
 template<typename T> class backend_interface {
 public:
-    /**
-     *
-     * @param particules
-     */
-    virtual void set_particules_coordinates(const std::vector<coordinate<T>>& particules) = 0;
+    virtual void init_backend(const std::vector<coordinate<T>>& particules) = 0;
+
 
     /**
      *

@@ -111,7 +111,6 @@ template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::run_velocity_v
  * @return
  */
 template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::init_lennard_jones_field(const configuration<T>& config) {
-    forces_ = std::vector<coordinate<T>>(get_particules_count());
     if (config.n_symetries == 1) {
         return compute_lennard_jones_field_inplace_sequential<T, 1>(coordinates_, config, forces_);
     } else if (config.n_symetries == 27) {
@@ -122,7 +121,6 @@ template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::init_lennard_j
 }
 
 template<typename T> void cpu_backend<T>::randinit_momentums(T min, T max) {
-    momentums_ = std::vector<coordinate<T>>(get_particules_count());
     std::generate(momentums_.begin(), momentums_.end(), [=]() {   //
         return coordinate<T>(internal::generate_random_value<T>(min, max), internal::generate_random_value<T>(min, max), internal::generate_random_value<T>(min, max));
     });

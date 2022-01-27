@@ -6,7 +6,13 @@ namespace sim {
 template<typename T> class cpu_backend : backend_interface<T> {
 
 public:
-    inline void set_particules_coordinates(const std::vector<coordinate<T>>& particules) override { coordinates_ = particules; }
+    inline void init_backend(const std::vector<coordinate<T>>& particules) override {
+        size_ = particules.size();
+        coordinates_ = particules;
+        momentums_ = std::vector<coordinate<T>>(size_);
+        forces_ = std::vector<coordinate<T>>(size_);
+    }
+
 
     void randinit_momentums(T min, T max) override;
 
@@ -27,21 +33,21 @@ public:
         for (auto& momentum: momentums_) { momentum -= mean; }
     }
 
-
-    inline coordinate<T> mean_kinetic_momentums() const override {
+    [[nodiscard]] inline coordinate<T> mean_kinetic_momentums() const override {
         coordinate<T> mean{};   // Sum of vi * mi;
         for (const auto& momentum: momentums_) { mean += momentum; }
         return mean / momentums_.size();
     }
 
 
-    [[nodiscard]] inline size_t get_particules_count() const override { return coordinates_.size(); }
+    [[nodiscard]] inline size_t get_particules_count() const override { return size_; }
 
     std::tuple<coordinate<T>, T> run_velocity_verlet(const configuration<T>& config) override;
 
     std::tuple<coordinate<T>, T> init_lennard_jones_field(const configuration<T>& config) override;
 
 private:
+    size_t size_{};
     std::vector<coordinate<T>> coordinates_{};   //
     std::vector<coordinate<T>> momentums_{};     // Vi * mi
     std::vector<coordinate<T>> forces_{};        // Lennard Jones Field

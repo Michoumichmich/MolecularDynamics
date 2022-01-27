@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
 #ifdef BUILD_DOUBLE
     /* Default simulation */
     run_example(100'000, coordinates_double);
+    //run_example(1'000'000, coordinates_double, {.dt = 0.1, .iter_per_frame = 1'000});
 
     /* Without the thermostate */
     run_example(100'000, coordinates_double, {.dt = 0.1, .use_berdensten_thermostate = false});

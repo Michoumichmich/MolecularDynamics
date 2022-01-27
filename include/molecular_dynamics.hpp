@@ -25,7 +25,7 @@ public:
           writer_(config.out_file),   //
           backend_(be) {
 
-        backend_.set_particules_coordinates(std::move(particules));
+        backend_.init_backend(std::move(particules));
 
         // Initializes the forces field.
         auto [sums, energy] = backend_.init_lennard_jones_field(config);
