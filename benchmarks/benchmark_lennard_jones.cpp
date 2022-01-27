@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include <sim_seq.h>
+#include <simulation_runner.h>
 #include <sim_sycl.h>
 
 #include <random>
@@ -17,7 +17,7 @@ template<typename T> void sequential_simulation_benchmark(benchmark::State& stat
     const auto size = static_cast<size_t>(state.range(0));
     const auto vec = generate_particules<T>(size, 10 * config.r_star_);
 
-    auto simulation = simulation_state(vec, config);   // preheat
+    auto simulation = simulation_runner(vec, config);   // preheat
     for (auto _: state) {
         auto start = std::chrono::high_resolution_clock::now();
         simulation.run_iter();

@@ -36,13 +36,13 @@ template<typename T> struct simulation_configuration {
     std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.
 
     [[nodiscard]] std::string config_hash() const {
-        return "L:"s + std::to_string(L_)                                //
-             + "_sym:" + std::to_string(n_symetries)                     //
-             + "_rcut:" + std::to_string(r_cut_)                         //
-             + "_usecut:" + std::to_string(use_cutoff)                   //
-             + "_dt:" + std::to_string(dt)                               //
-             + "_period:" + std::to_string(iter_per_frame)               //
-             + "_thermo:" + std::to_string(use_berdensten_thermostate)   //
+        return "L="s + std::to_string(L_)                                //
+             + "_sym=" + std::to_string(n_symetries)                     //
+             + "_rcut=" + std::to_string(r_cut_)                         //
+             + "_usecut=" + std::to_string(use_cutoff)                   //
+             + "_dt=" + std::to_string(dt)                               //
+             + "_period=" + std::to_string(iter_per_frame)               //
+             + "_thermo=" + std::to_string(use_berdensten_thermostate)   //
              + "_" + type_to_string();
     }
 

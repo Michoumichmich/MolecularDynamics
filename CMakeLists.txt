@@ -41,12 +41,12 @@ endif ()
 include_directories(include)
 
 # Sequential library
-add_library(ISM_SEQ_backend SHARED src/sim_seq.cpp include/internal/utils.hpp include/sim_seq.h)
-add_sycl_to_target(TARGET ISM_SEQ_backend SOURCES src/sim_seq.cpp)
+add_library(CPU_backend SHARED src/cpu_backend.cpp)
+add_sycl_to_target(TARGET CPU_backend SOURCES src/cpu_backend.cpp)
 
 add_executable(ISM_SEQ main_seq.cpp)
 add_sycl_to_target(TARGET ISM_SEQ SOURCES main_seq.cpp)
-target_link_libraries(ISM_SEQ PRIVATE ISM_SEQ_backend)
+target_link_libraries(ISM_SEQ PRIVATE CPU_backend)
 
 # SYCL Library
 add_library(ISM_SYCL_backend SHARED src/sim_sycl.cpp include/internal/utils.hpp include/sim_sycl.h)
