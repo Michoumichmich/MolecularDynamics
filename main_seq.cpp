@@ -1,10 +1,10 @@
-#include <simulation_runner.h>
+#include <sim>
 
-template<typename T> void run_example(const std::vector<coordinate<T>>& coordinates, simulation_configuration<T> config) {
+template<typename T> void run_example(const std::vector<sim::coordinate<T>>& coordinates, sim::configuration<T> config) {
     std::cout << config << std::endl;
-    auto simulation = simulation_runner<T>(coordinates, config);
+    auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
     for (int i = 0; i < 100000; ++i) {
-        std::cout << simulation;
+        std::cout << simulation << std::endl;
         simulation.run_iter();
     }
 }
@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
         std::cerr << "Usage: ./" << argv[0] << "particle_file.xyz" << std::endl;
         return 1;
     }
-    auto coordinates_double = parse_particule_file(argv[1]);
+    auto coordinates_double = sim::parse_particule_file(argv[1]);
 
 
 #ifdef BUILD_DOUBLE
@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 #endif
 
 #ifdef BUILD_FLOAT
-    auto coordinates_float = coordinate_vector_cast<float>(coordinates_double);
+    auto coordinates_float = sim::coordinate_vector_cast<float>(coordinates_double);
     run_example(coordinates_float, {});
 //    run_example(coordinates_float, {.use_cutoff = true, .r_cut_ = 40, .n_symetries = 27, .L_ = 50});
 //    run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 1});
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 #endif
 
 #ifdef BUILD_HALF
-    auto coordinates_half = coordinate_vector_cast<sycl::half>(coordinates_double);
+    auto coordinates_half = sim::coordinate_vector_cast<sycl::half>(coordinates_double);
     run_example(coordinates_half, {.use_cutoff = false, .n_symetries = 1});
     run_example(coordinates_half, {.use_cutoff = false, .n_symetries = 27});
     run_example(coordinates_half, {.use_cutoff = true, .n_symetries = 1});

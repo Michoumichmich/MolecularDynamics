@@ -4,7 +4,7 @@
 #    include <sycl/ext/intel/fpga_device_selector.hpp>   //sycl::queue{sycl::ext::intel::fpga_emulator_selector{}};
 #endif
 
-template<typename T> void run_example(sycl::queue& q, const std::vector<coordinate<T>>& coordinates, simulation_configuration<T> config) {
+template<typename T> void run_example(sycl::queue& q, const std::vector<coordinate<T>>& coordinates, configuration<T> config) {
     std::cout << config << std::endl;
     auto [field, sum, energy] = run_simulation_sycl(q, config, coordinates);
     std::cout << "Lennard Jones Energy: " << energy << std::endl;

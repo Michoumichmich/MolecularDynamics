@@ -1,6 +1,6 @@
 #pragma once
 
-#include <internal/sim_common.hpp>
+#include <internal/sim_config.hpp>
 
 /**
  *
@@ -16,7 +16,7 @@ template<typename T>
 std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(                                      //
         sycl::queue& q,                                                                              //
         std::span<coordinate<T>> particules_device_in, std::span<coordinate<T>> forces_device_out,   //
-        simulation_configuration<T> config,                                                          //
+        configuration<T> config,                                                                     //
         sycl::event evt = {});
 
 #ifdef BUILD_HALF
@@ -31,7 +31,7 @@ extern template std::tuple<coordinate<sycl::half>, sycl::half> run_simulation_sy
 extern template std::tuple<coordinate<float>, float> run_simulation_sycl_device_memory<float>(                     //
         sycl::queue& q,                                                                                            //
         const std::span<coordinate<float>> particules_device_in, std::span<coordinate<float>> forces_device_out,   //
-        simulation_configuration<float> config,                                                                    //
+        configuration<float> config,                                                                               //
         sycl::event evt);
 #endif
 
@@ -39,7 +39,7 @@ extern template std::tuple<coordinate<float>, float> run_simulation_sycl_device_
 extern template std::tuple<coordinate<double>, double> run_simulation_sycl_device_memory<double>(                    //
         sycl::queue& q,                                                                                              //
         const std::span<coordinate<double>> particules_device_in, std::span<coordinate<double>> forces_device_out,   //
-        simulation_configuration<double> config,                                                                     //
+        configuration<double> config,                                                                                //
         sycl::event evt);
 #endif
 
@@ -53,7 +53,7 @@ extern template std::tuple<coordinate<double>, double> run_simulation_sycl_devic
  */
 template<typename T>
 std::tuple<std::vector<coordinate<T>>, coordinate<T>, T>   //
-run_simulation_sycl(sycl::queue& q, simulation_configuration<T> config, const std::vector<coordinate<T>>& particules_host);
+run_simulation_sycl(sycl::queue& q, configuration<T> config, const std::vector<coordinate<T>>& particules_host);
 
 #ifdef BUILD_HALF
 extern template std::tuple<std::vector<coordinate<sycl::half>>, coordinate<sycl::half>, sycl::half>   //
@@ -62,10 +62,10 @@ run_simulation_sycl<sycl::half>(sycl::queue& q, simulation_configuration<sycl::h
 
 #ifdef BUILD_FLOAT
 extern template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   //
-run_simulation_sycl<float>(sycl::queue& q, simulation_configuration<float> config, const std::vector<coordinate<float>>& particules_host);
+run_simulation_sycl<float>(sycl::queue& q, configuration<float> config, const std::vector<coordinate<float>>& particules_host);
 #endif
 
 #ifdef BUILD_DOUBLE
 extern template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
-run_simulation_sycl<double>(sycl::queue& q, simulation_configuration<double> config, const std::vector<coordinate<double>>& particules_host);
+run_simulation_sycl<double>(sycl::queue& q, configuration<double> config, const std::vector<coordinate<double>>& particules_host);
 #endif

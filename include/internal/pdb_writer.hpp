@@ -1,12 +1,13 @@
 #pragma once
 
-#include <fstream>
-#include <internal/sim_common.hpp>
+#include <internal/cpp_utils.hpp>
+#include <internal/sim_math.hpp>
 
+#include <fstream>
+
+namespace sim {
 
 class pdb_writer {
-
-
 public:
     explicit pdb_writer(const std::string& file_name) : filename_(file_name), fs(file_name) {
         if (file_name.empty()) { std::cout << "Empty file name given. " << std::endl; }
@@ -42,3 +43,4 @@ private:
     std::string filename_;
     std::ofstream fs;
 };
+}   // namespace sim

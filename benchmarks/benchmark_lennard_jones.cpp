@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include <simulation_runner.h>
+#include <molecular_dynamics.hpp>
 #include <sim_sycl.h>
 
 #include <random>

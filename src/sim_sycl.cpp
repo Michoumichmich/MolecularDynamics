@@ -20,14 +20,14 @@ template<typename T> static inline void prefetch_constant(const T* ptr) {
 
 template<typename T, bool multiple_size, int n_sym> class leenard_jones_kernel {
 private:
-    const simulation_configuration<T> config_;
+    const configuration<T> config_;
     const std::span<coordinate<T>> particules_;
     std::span<coordinate<T>> forces_field_;
     sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local> particules_tile_;
 
 public:
     leenard_jones_kernel(                                 //
-            const simulation_configuration<T>& config,    //
+            const configuration<T>& config,               //
             const std::span<coordinate<T>>& particules,   //
             const std::span<coordinate<T>>& forces,       //
             const sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local>& acc)
@@ -126,7 +126,7 @@ template<typename T, bool multiple_size, int n_sym>
 static inline auto internal_simulator_on_sycl(                                        //
         sycl::queue& q, size_t work_group_size,                                       //
         const std::span<coordinate<T>> particules, std::span<coordinate<T>> forces,   //
-        simulation_configuration<T> config, sycl::event evt = {}) {
+        configuration<T> config, sycl::event evt = {}) {
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
     {
@@ -171,7 +171,7 @@ template<typename T>
 std::tuple<coordinate<T>, T> run_simulation_sycl_device_memory(                                            //
         sycl::queue& q,                                                                                    //
         const std::span<coordinate<T>> particules_device_in, std::span<coordinate<T>> forces_device_out,   //
-        simulation_configuration<T> config,                                                                //
+        configuration<T> config,                                                                           //
         sycl::event evt) {
     auto max_compute_units = q.get_device().get_info<sycl::info::device::max_compute_units>();
     auto work_group_size = std::min(particules_device_in.size() / max_compute_units, q.get_device().get_info<sycl::info::device::max_work_group_size>());
@@ -213,14 +213,14 @@ template std::tuple<coordinate<sycl::half>, sycl::half> run_simulation_sycl_devi
 template std::tuple<coordinate<float>, float> run_simulation_sycl_device_memory<float>(                            //
         sycl::queue& q,                                                                                            //
         const std::span<coordinate<float>> particules_device_in, std::span<coordinate<float>> forces_device_out,   //
-        simulation_configuration<float> config, sycl::event evt);
+        configuration<float> config, sycl::event evt);
 #endif
 
 #ifdef BUILD_DOUBLE
 template std::tuple<coordinate<double>, double> run_simulation_sycl_device_memory<double>(                           //
         sycl::queue& q,                                                                                              //
         const std::span<coordinate<double>> particules_device_in, std::span<coordinate<double>> forces_device_out,   //
-        simulation_configuration<double> config, sycl::event evt);
+        configuration<double> config, sycl::event evt);
 #endif
 
 /**
@@ -234,7 +234,7 @@ template std::tuple<coordinate<double>, double> run_simulation_sycl_device_memor
 template<typename T>
 std::tuple<std::vector<coordinate<T>>, coordinate<T>, T> run_simulation_sycl(   //
         sycl::queue& q,                                                         //
-        simulation_configuration<T> config, const std::vector<coordinate<T>>& particules_host) {
+        configuration<T> config, const std::vector<coordinate<T>>& particules_host) {
     auto particules_device = std::span(sycl::malloc_device<coordinate<T>>(particules_host.size(), q), particules_host.size());
     auto copy_evt = q.copy(particules_host.data(), particules_device.data(), particules_device.size());
     auto forces_device = std::span(sycl::malloc_device<coordinate<T>>(particules_host.size(), q), particules_host.size());
@@ -253,10 +253,10 @@ run_simulation_sycl<sycl::half>(sycl::queue& q, simulation_configuration<sycl::h
 
 #ifdef BUILD_FLOAT
 template std::tuple<std::vector<coordinate<float>>, coordinate<float>, float>   //
-run_simulation_sycl<float>(sycl::queue& q, simulation_configuration<float> config, const std::vector<coordinate<float>>& particules_host);
+run_simulation_sycl<float>(sycl::queue& q, configuration<float> config, const std::vector<coordinate<float>>& particules_host);
 #endif
 
 #ifdef BUILD_DOUBLE
 template std::tuple<std::vector<coordinate<double>>, coordinate<double>, double>   //
-run_simulation_sycl<double>(sycl::queue& q, simulation_configuration<double> config, const std::vector<coordinate<double>>& particules_host);
+run_simulation_sycl<double>(sycl::queue& q, configuration<double> config, const std::vector<coordinate<double>>& particules_host);
 #endif

@@ -49,7 +49,7 @@ add_sycl_to_target(TARGET ISM_SEQ SOURCES main_seq.cpp)
 target_link_libraries(ISM_SEQ PRIVATE CPU_backend)
 
 # SYCL Library
-add_library(ISM_SYCL_backend SHARED src/sim_sycl.cpp include/internal/utils.hpp include/sim_sycl.h)
+add_library(ISM_SYCL_backend SHARED src/sim_sycl.cpp include/internal/cpp_utils.hpp include/sim_sycl.h)
 add_sycl_to_target(TARGET ISM_SYCL_backend SOURCES src/sim_sycl.cpp)
 
 add_executable(ISM_SYCL main_sycl.cpp)

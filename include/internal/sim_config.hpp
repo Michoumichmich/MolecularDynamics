@@ -1,17 +1,14 @@
 #pragma once
 
-#include "utils.hpp"
-#include <fstream>
+#include <internal/cpp_utils.hpp>
+
 #include <iostream>
 #include <string>
-#include <tuple>
-#include <vector>
 
+
+namespace sim {
 using namespace std::string_literals;
-
-template<typename T> using coordinate = sycl::vec<T, 3U>;
-
-template<typename T> struct simulation_configuration {
+template<typename T> struct configuration {
     static constexpr T m_i = 18;                            // Mass of a particle in some unit
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
@@ -54,12 +51,12 @@ template<typename T> struct simulation_configuration {
         } else if constexpr (std::is_same_v<T, double>) {
             return "double";
         } else {
-            fail_to_compile<T>();
+            internal::fail_to_compile<T>();
         }
     }
 
 
-    friend std::ostream& operator<<(std::ostream& os, simulation_configuration config) {
+    friend std::ostream& operator<<(std::ostream& os, configuration config) {
         os << "Cutoff: " << config.use_cutoff           //
            << ", r_cut: " << config.r_cut_              //
            << ", n_symetries: " << config.n_symetries   //
@@ -68,63 +65,4 @@ template<typename T> struct simulation_configuration {
         return os;
     }
 };
-
-/**
- * Converts a vector of coordinates<Src_T> to a vector of coordinates<Dst_T>
- * @tparam Dst_T
- * @tparam Src_T
- * @param in
- * @return
- */
-template<typename Dst_T, typename Src_T> static inline std::vector<coordinate<Dst_T>> coordinate_vector_cast(const std::vector<coordinate<Src_T>>& in) {
-    std::vector<coordinate<Dst_T>> out(in.size());
-    for (unsigned int i = 0; i < in.size(); ++i) { out[i] = coordinate<Dst_T>{static_cast<Dst_T>(in[i].x()), static_cast<Dst_T>(in[i].y()), static_cast<Dst_T>(in[i].z())}; }
-    return out;
-}
-
-/**
- * Reads the particule file and returns a vector of coordinates (doubles)
- * @param filename
- * @return
- */
-static inline std::vector<coordinate<double>> parse_particule_file(std::string&& filename) {
-    auto fs = std::ifstream(filename);
-    if (!fs.is_open()) throw std::runtime_error("File not found");
-    auto comment = std::string{};
-    std::getline(fs, comment);
-    std::cout << "Comment is: " << comment << std::endl << std::endl;
-    auto coordinates = std::vector<coordinate<double>>{};
-    while (!fs.eof()) {
-        auto tmp = 0;
-        coordinate<double> c{};
-        fs >> tmp >> c.x() >> c.y() >> c.z();
-        coordinates.emplace_back(c);
-    }
-    return coordinates;
-}
-
-/**
- * Computes the symetries
- * @tparam N
- * @return
- */
-template<int N> static inline constexpr std::array<sycl::vec<int, 3U>, N> get_symetries() {
-    static_assert(N == 1 || N == 27 || N == 125);
-    if constexpr (N == 1) {
-        return std::array<sycl::vec<int, 3U>, 1>{sycl::vec<int, 3U>{0, 0, 0}};
-    } else {
-        std::array<sycl::vec<int, 3U>, N> out;
-        constexpr int n = icbrt(N);
-        constexpr int delta = n / 2;
-        for (int i = -delta; i <= delta; ++i) {
-            for (int j = -delta; j <= delta; ++j) {
-                for (int k = -delta; k <= delta; ++k) { out[n * n * (i + delta) + n * (j + delta) + (k + delta)] = sycl::vec<int, 3U>(i, j, k); }
-            }
-        }
-        return out;
-    }
-}
-
-template<typename T> constexpr static inline T compute_squared_distance(const coordinate<T>& lhs, const coordinate<T>& rhs) {
-    return (lhs[0U] - rhs[0U]) * (lhs[0U] - rhs[0U]) + (lhs[1U] - rhs[1U]) * (lhs[1U] - rhs[1U]) + (lhs[2U] - rhs[2U]) * (lhs[2U] - rhs[2U]);
-}
+}   // namespace sim

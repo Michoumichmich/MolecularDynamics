@@ -24,6 +24,8 @@
 #    include <span>
 #endif
 
+
+namespace sim::internal {
 constexpr auto icbrt(unsigned x) {
     unsigned y = 0, b = 0;
     for (int s = 30; s >= 0; s = s - 3) {
@@ -129,3 +131,4 @@ static_assert(check_strictly_linear(2, 0));
 static_assert(check_strictly_linear(2, 1));
 static_assert(check_strictly_linear(3, 2));
 */
+}   // namespace sim::internal
