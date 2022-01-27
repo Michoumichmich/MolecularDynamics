@@ -1,9 +1,9 @@
 #include <sim>
 
-template<typename T> void run_example(const std::vector<sim::coordinate<T>>& coordinates, sim::configuration<T> config) {
+template<typename T> void run_example(size_t n, const std::vector<sim::coordinate<T>>& coordinates, sim::configuration<T> config) {
     std::cout << config << std::endl;
     auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
-    for (int i = 0; i < 100000; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         std::cout << simulation << std::endl;
         simulation.run_iter();
     }
@@ -18,33 +18,37 @@ int main(int argc, char** argv) {
 
 
 #ifdef BUILD_DOUBLE
-    run_example(coordinates_double, {.iter_per_frame = 1});
-//    run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 1});
-//    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 1});
-//    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27});
-//    run_example(coordinates_double, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});
-//    run_example(coordinates_double, {.use_cutoff = false, .n_symetries = 27, .L_ = 50});
+    /* Default simulation */
+    run_example(100'000, coordinates_double, {.iter_per_frame = 100});
+
+    /* Without the thermostate */
+    run_example(100'000, coordinates_double, {.dt = 0.1, .use_berdensten_thermostate = false, .iter_per_frame = 100});
+
+    /* One that explodes! */
+    run_example(1'000, coordinates_double, {.dt = 16, .use_berdensten_thermostate = true, .iter_per_frame = 1});
 #endif
 
 #ifdef BUILD_FLOAT
     auto coordinates_float = sim::coordinate_vector_cast<float>(coordinates_double);
-    run_example(coordinates_float, {});
-//    run_example(coordinates_float, {.use_cutoff = true, .r_cut_ = 40, .n_symetries = 27, .L_ = 50});
-//    run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 1});
-//    run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 27});
-//    run_example(coordinates_float, {.use_cutoff = true, .n_symetries = 1});
-//    run_example(coordinates_float, {.use_cutoff = true, .n_symetries = 27});
-//    run_example(coordinates_float, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});
-//    run_example(coordinates_float, {.use_cutoff = false, .n_symetries = 27, .L_ = 50});
+    /* Default simulation */
+    run_example(100'000, coordinates_float, {.iter_per_frame = 100});
+
+    /* Without the thermostate */
+    run_example(100'000, coordinates_float, {.dt = 0.1, .use_berdensten_thermostate = false, .iter_per_frame = 100});
+
+    /* One that explodes! */
+    run_example(1'000, coordinates_float, {.dt = 16, .use_berdensten_thermostate = true, .iter_per_frame = 1});
 #endif
 
 #ifdef BUILD_HALF
     auto coordinates_half = sim::coordinate_vector_cast<sycl::half>(coordinates_double);
-    run_example(coordinates_half, {.use_cutoff = false, .n_symetries = 1});
-    run_example(coordinates_half, {.use_cutoff = false, .n_symetries = 27});
-    run_example(coordinates_half, {.use_cutoff = true, .n_symetries = 1});
-    run_example(coordinates_half, {.use_cutoff = true, .n_symetries = 27});
-    run_example(coordinates_half, {.use_cutoff = true, .n_symetries = 27, .L_ = 50});
-    run_example(coordinates_half, {.use_cutoff = false, .n_symetries = 27, .L_ = 50});
+    /* Default simulation */
+    run_example(100'000, coordinates_half, {.iter_per_frame = 100});
+
+    /* Without the thermostate */
+    run_example(100'000, coordinates_half, {.dt = 0.1, .use_berdensten_thermostate = false, .iter_per_frame = 100});
+
+    /* One that explodes! */
+    run_example(1'000, coordinates_half, {.dt = 16, .use_berdensten_thermostate = true, .iter_per_frame = 1});
 #endif
 }

@@ -12,11 +12,11 @@ template<typename T> struct configuration {
     static constexpr T m_i = 18;                            // Mass of a particle in some unit
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
-    static constexpr T dt = 1;                              // 0.1 fs, should be 1.
+    T dt = 1;                                               // 0.1 fs, should be 1.
     static constexpr T T0 = 300;                            // 300 Kelvin
 
     // Berdensten thermostate
-    static constexpr bool use_berdensten_thermostate = true;
+    bool use_berdensten_thermostate = true;
     static constexpr T gamma = 0.01;        // Gamma for the berdensten thermostate, should be 0.01
     static constexpr size_t m_step = 100;   // Should be 100
 

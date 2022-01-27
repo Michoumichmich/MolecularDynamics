@@ -36,7 +36,7 @@ public:
         backend_.randinit_momentums(-1, 1);
 
         // Fixes the barycenter.
-        fixup_kinetic_momentums();
+        backend_.center_kinetic_momentums();
 
         // Computes the temperature of the systme and scales the momentums to reach the target temperature.
         fixup_temperature(configuration_.T0);
@@ -56,17 +56,17 @@ public:
         forces_sum_ = summed_forces;
         lennard_jones_energy_ = lennard_jones_energy;
 
-        // Update and fixe up the temperature
+        // Update and fixes up the temperature
         apply_berendsen_thermostate();
         update_kinetic_energy_and_temp();
+        update_energy_metrics();
 
         if (simulation_idx_ % configuration_.iter_per_frame == 0) { backend_.store_particules_coordinates(writer_, simulation_idx_); }
 
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()) * 1e-9;
-        avg_iter_duration_ = (avg_iter_duration_ + duration) / 2;
-        fixup_kinetic_momentums();
-        update_energy_metrics();
+        constexpr static double aging_coeff = 0.01;
+        avg_iter_duration_ = (avg_iter_duration_ + duration * aging_coeff) / (1 + aging_coeff);
     }
 
 
@@ -103,7 +103,7 @@ private:
     [[nodiscard]] inline size_t degrees_of_freedom() const noexcept { return 3 * backend_.get_particules_count() - 3; }
 
     inline void update_energy_metrics() const noexcept {
-        constexpr static double aging_coeff = 0.01;
+        constexpr static double aging_coeff = 0.001;
         double prev_energy = total_energy_;
         total_energy_ = kinetic_energy_ + lennard_jones_energy_;
         avg_delta_energy_ = ((total_energy_ - prev_energy) * aging_coeff + avg_delta_energy_) / (1 + aging_coeff);
@@ -116,31 +116,22 @@ private:
      */
     inline void fixup_temperature(T desired_temperature) noexcept {
         update_kinetic_energy_and_temp();
-        const T rapport = sycl::sqrt(degrees_of_freedom() * configuration_.constante_R * desired_temperature / kinetic_energy_);
-        backend_.apply_multiplicative_correction_to_momentums(rapport);
+        const T coeff = sycl::sqrt(degrees_of_freedom() * configuration_.constante_R * desired_temperature / kinetic_energy_);
+        backend_.apply_multiplicative_correction_to_momentums(coeff);
         update_kinetic_energy_and_temp();
     }
-
-    /**
-     * Fixes the kinetic momentums in a way that the barycenter does not move.
-     * @tparam T
-     */
-    inline void fixup_kinetic_momentums() noexcept { backend_.center_kinetic_momentums(); }
 
     /**
      * Applies the Berendsen thermostate on the current system using the current kinetic temperature.
      */
     inline void apply_berendsen_thermostate() noexcept {
-        if constexpr (!configuration<T>::use_berdensten_thermostate) {
-            return;
-        } else {
-            if (simulation_idx_ % configuration_.m_step != 0 || simulation_idx_ == 0) { return; }
-            update_kinetic_energy_and_temp();
-            //const T coeff = config_.gamma * sycl::sqrt(std::abs((config_.T0 / kinetic_temperature_) - 1));
-            const T coeff = configuration_.gamma * ((configuration_.T0 / kinetic_temperature_) - 1);
-            backend_.apply_multiplicative_correction_to_momentums(1 + coeff);   // momentum += momentum * coeff
-            std::cout << "[Berendsen] Thermostate applied with coeff: " << coeff << std::endl;
-        }
+        if (!configuration_.use_berdensten_thermostate) { return; }
+        if (simulation_idx_ % configuration_.m_step != 0 || simulation_idx_ == 0) { return; }
+        update_kinetic_energy_and_temp();
+        //const T coeff = config_.gamma * sycl::sqrt(std::abs((config_.T0 / kinetic_temperature_) - 1));
+        const T coeff = configuration_.gamma * ((configuration_.T0 / kinetic_temperature_) - 1);
+        backend_.apply_multiplicative_correction_to_momentums(1 + coeff);   // momentum += momentum * coeff
+        std::cout << "[Berendsen] Thermostate applied with coeff: " << coeff << std::endl;
     }
 
 private:

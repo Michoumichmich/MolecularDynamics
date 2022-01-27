@@ -1,6 +1,6 @@
 #pragma once
 
-#include <internal/sim_config.hpp>
+#include "sim_config.hpp"
 
 /**
  *
