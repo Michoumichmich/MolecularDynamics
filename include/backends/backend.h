@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../internal/pdb_writer.hpp"
-#include "../internal/sim_common.hpp"
+#include <internal/pdb_writer.hpp>
+#include <internal/sim_common.hpp>
 
 template<typename T> class simulation_backend {
 public:

@@ -1,6 +1,5 @@
 #include <backends/cpu_backend.hpp>
 
-
 /**
  *
  * @tparam T Floating point type
@@ -15,7 +14,10 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
         std::vector<coordinate<T>>& forces) {
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
-    //#pragma omp parallel for default(none) shared(particules, config, forces) reduction(+ : energy, summed_forces)
+
+#pragma omp declare reduction(+ : coordinate <T> : omp_out += omp_in)   // initializer(omp_priv = coordinate <double>{}))
+
+#pragma omp parallel for default(none) shared(particules, config, forces) reduction(+ : energy, summed_forces)
     for (auto i = 0U; i < particules.size(); ++i) {
         forces[i] = {};
         auto this_particule_energy = T{};
@@ -47,14 +49,6 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
     return std::tuple(summed_forces, energy);
 }
 
-/**
- * Launches the Lennard Jones computation based on the symetries count.
- * @tparam T
- * @param particules
- * @param config
- * @param forces
- * @return
- */
 
 /**
  * Runs one iteration of the velocity verlet algorithm.
@@ -95,6 +89,7 @@ static inline std::tuple<coordinate<T>, T> velocity_verlet_sequential(   //
 /**
  * Runs an iteration of the Velocity Verlet algorithm.
  * @tparam T
+ * @param config
  * @return
  */
 template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::run_velocity_verlet(const simulation_configuration<T>& config) {
@@ -106,6 +101,14 @@ template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::run_velocity_v
         throw std::runtime_error("Unsupported");
     }
 }
+
+
+/**
+ *
+ * @tparam T
+ * @param config
+ * @return
+ */
 template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::init_lennard_jones_field(const simulation_configuration<T>& config) {
     forces_ = std::vector<coordinate<T>>(get_particules_count());
     if (config.n_symetries == 1) {

@@ -2,7 +2,6 @@
 
 #include <internal/sim_common.hpp>
 
-
 /**
  *
  * @tparam T Floating point type

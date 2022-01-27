@@ -1,8 +1,6 @@
 #pragma once
 
 #include <backends/cpu_backend.hpp>
-#include <internal/pdb_writer.hpp>
-#include <internal/sim_common.hpp>
 #include <iomanip>
 
 
@@ -33,7 +31,7 @@ private:
      * Updates the kinectic energy and temperature based on current momentums.
      * @tparam T
      */
-    void update_kinetic_energy_and_temp() const noexcept {
+    inline void update_kinetic_energy_and_temp() const noexcept {
         T sum = backend.get_momentums_squared_norm();
         kinetic_energy_ = sum / (2 * config_.conversion_force * config_.m_i);
         kinetic_temperature_ = kinetic_energy_ / (config_.constante_R * degrees_of_freedom());
@@ -45,7 +43,7 @@ private:
      */
     [[nodiscard]] inline size_t degrees_of_freedom() const { return 3 * backend.get_particules_count() - 3; }
 
-    void update_energy_metrics() const {
+    inline void update_energy_metrics() const {
         constexpr static double aging_coeff = 0.01;
         double prev_energy = total_energy;
         total_energy = kinetic_energy_ + lennard_jones_energy_;
@@ -57,7 +55,7 @@ private:
      * @tparam T
      * @param desired_temperature
      */
-    void fixup_temperature(T desired_temperature) noexcept {
+    inline void fixup_temperature(T desired_temperature) noexcept {
         update_kinetic_energy_and_temp();
         const T rapport = sycl::sqrt(degrees_of_freedom() * config_.constante_R * desired_temperature / kinetic_energy_);
         backend.apply_multiplicative_correction_to_momentums(rapport);
@@ -68,12 +66,12 @@ private:
      * Fixes the kinetic momentums in a way that the barycenter does not move.
      * @tparam T
      */
-    void fixup_kinetic_momentums() noexcept { backend.center_kinetic_momentums(); }
+    inline void fixup_kinetic_momentums() noexcept { backend.center_kinetic_momentums(); }
 
     /**
      * Applies the Berendsen thermostate on the current system using the current kinetic temperature.
      */
-    void apply_berendsen_thermostate() noexcept {
+    inline void apply_berendsen_thermostate() noexcept {
         if constexpr (!simulation_configuration<T>::use_berdensten_thermostate) {
             return;
         } else {
@@ -92,7 +90,7 @@ public:
      * @param particules
      * @param config
      */
-    simulation_runner(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config)
+    inline simulation_runner(const std::vector<coordinate<T>>& particules, simulation_configuration<T> config)
         : config_(config),     //
           simulation_idx(0),   //
           out(config.out_file) {
@@ -119,7 +117,7 @@ public:
     /**
      *
      */
-    void run_iter() {
+    inline void run_iter() {
         auto begin = std::chrono::high_resolution_clock::now();
         ++simulation_idx;
 
