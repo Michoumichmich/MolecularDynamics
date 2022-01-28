@@ -22,7 +22,6 @@ int main(int argc, char** argv) {
 #ifdef BUILD_DOUBLE
     /* Default simulation */
     run_example(100'000, coordinates_double);
-    //run_example(1'000'000, coordinates_double, {.dt = 0.1, .iter_per_frame = 1'000});
 
     /* Without the thermostate */
     run_example(100'000, coordinates_double, {.dt = 0.1, .use_berdensten_thermostate = false});
@@ -43,7 +42,7 @@ int main(int argc, char** argv) {
     run_example(100'000, coordinates_float);
     run_example(100'000, coordinates_float, {.dt = 0.1, .use_berdensten_thermostate = false});
     run_example(1'000, coordinates_float, {.dt = 16, .iter_per_frame = 1});
-    run_example(100'000, coordinates_float, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries_ = 1});
+    run_example(10'000'000, coordinates_float, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries_ = 1, .iter_per_frame = 10'000});
     run_example(100'000, coordinates_float, {.dt = 0.1, .r_cut_ = 75, .n_symetries_ = 125, .L_ = 75});
 #endif
 
