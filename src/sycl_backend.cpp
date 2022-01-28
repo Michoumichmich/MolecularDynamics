@@ -4,8 +4,8 @@
 namespace sim {
 
 
-template<typename KernelName> static inline size_t sycl_max_work_items(sycl::queue& q) {
-    size_t max_items = std::max<size_t>(1U, std::min<size_t>(2048U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
+template<typename KernelName> static inline size_t max_work_groups_for_kernel(sycl::queue& q) {
+    size_t max_items = std::max<size_t>(1U, std::min<size_t>(4096U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
 #if defined(SYCL_IMPLEMENTATION_INTEL) || defined(SYCL_IMPLEMENTATION_ONEAPI)
     try {
         sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
@@ -15,8 +15,6 @@ template<typename KernelName> static inline size_t sycl_max_work_items(sycl::que
     } catch (std::exception& e) {
         std::cout << "Couldn't read kernel properties for device: " << q.get_device().get_info<sycl::info::device::name>() << " got exception: " << e.what() << std::endl;
     }
-#else
-    if (q.get_device().is_gpu()) { max_items = std::min<size_t>(max_items, 1024); }
 #endif
     return max_items;
 }
@@ -89,7 +87,7 @@ static inline auto update_lennard_jones_field_impl_sycl(                        
 template<typename T>
 static inline auto update_lennard_jones_field_dispatch_impl(                                                     //
         sycl::queue& q,                                                                                          //
-        size_t size, typename sycl_backend<T>::kernel_configs configs,                                           //
+        size_t size, const typename sycl_backend<T>::kernel_configs& configs,                                    //
         const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
 
@@ -179,18 +177,25 @@ template<typename T> void sycl_backend<T>::run_velocity_verlet(const configurati
 }
 
 template<typename T>
-sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue)
+sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue, bool maximise_occupancy)
     : q(std::move(queue)), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), particule_energy_(size, q), tmp_buf_(size) {
-    auto max_compute_units = q.get_device().template get_info<sycl::info::device::max_compute_units>();
 
-    configs.max_work_group_size_ = std::max(1UL, std::min(size / max_compute_units, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
-    configs.max_work_groups_lennard_1 = std::min(configs.max_work_group_size_, sycl_max_work_items<lennard_jones_kernel<T, 1>>(q));
-    configs.max_work_groups_lennard_27 = std::min(configs.max_work_group_size_, sycl_max_work_items<lennard_jones_kernel<T, 27>>(q));
+    const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
+    const auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
+
+    if (maximise_occupancy && size_ < max_compute_units * max_work_group_size) {
+        configs.max_work_group_size_ = std::min(max_work_group_size, std::max(1UL, (size + max_compute_units - 1) / max_compute_units));
+    } else {
+        configs.max_work_group_size_ = max_work_group_size;
+    }
+
+    configs.max_work_groups_lennard_1 = std::min(configs.max_work_group_size_, max_work_groups_for_kernel<lennard_jones_kernel<T, 1>>(q));
+    configs.max_work_groups_lennard_27 = std::min(configs.max_work_group_size_, max_work_groups_for_kernel<lennard_jones_kernel<T, 27>>(q));
 
     configs.max_reduction_size = configs.max_work_group_size_;
 #ifdef SYCL_IMPLEMENTATION_ONEAPI
     if (q.get_device().is_cpu()) {
-        configs.max_reduction_size = std::min(32UL, configs.max_reduction_size);
+        configs.max_reduction_size = std::min(64UL, configs.max_reduction_size);
     } else if (q.get_device().is_gpu()) {
         configs.max_reduction_size = std::min(512UL, configs.max_reduction_size);
     }
