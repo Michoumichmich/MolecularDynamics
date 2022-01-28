@@ -31,12 +31,16 @@ public:
     std::tuple<coordinate<T>, T> init_lennard_jones_field(const configuration<T>& config) override;
 
 private:
+    T reduce_energies() const;
+    coordinate<T> compute_error_lennard_jones() const;
+
     mutable sycl::queue q;                                //
     size_t size_;                                         //
     size_t max_work_group_size_;                          //
     sycl_unique_device_ptr<coordinate<T>> coordinates_;   //
     sycl_unique_device_ptr<coordinate<T>> momentums_;     // Vi * mi
     sycl_unique_device_ptr<coordinate<T>> forces_;        // Lennard Jones Field
+    sycl_unique_device_ptr<T> particule_energy_;          // Lennard Jones Field
     mutable std::vector<coordinate<T>> tmp_buf_;          //
 };
 
