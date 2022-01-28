@@ -52,7 +52,7 @@ endif ()
 if (NOT A_SYCL_FOUND)
     add_compile_definitions(USING_DPCPP)
     function(add_sycl_to_target arg1 arg2)
-        target_compile_options(${arg2} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fsycl ${DPCPP_FLAGS} -sycl-std=2020 -fsycl-unnamed-lambda>)
+        target_compile_options(${arg2} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fsycl ${DPCPP_FLAGS} -sycl-std=2020 -fsycl-unnamed-lambda -DSYCL_DISABLE_FALLBACK_ASSERT=0 -fsycl-id-queries-fit-in-int >)
         target_link_options(${arg2} PRIVATE -fsycl ${DPCPP_FLAGS} -sycl-std=2020 -fsycl-unnamed-lambda)
     endfunction()
 

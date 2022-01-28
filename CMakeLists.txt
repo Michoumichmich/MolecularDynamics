@@ -3,10 +3,10 @@ project(ISM CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-set(WARNINGS "-Wall -Wextra -Wno-assume -Wno-unused-command-line-argument -Wno-tautological-constant-compare -Wno-unknown-warning-option")
+set(WARNINGS "-Wall -Wextra -Wno-assume -Wno-unused-command-line-argument -Wno-tautological-constant-compare -Wno-unknown-warning-option -Wno-linker-warnings")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS} -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -fPIE ${WARNINGS}")
 
 if (APPLE)
@@ -16,10 +16,13 @@ else ()
 endif ()
 
 
-set(DPCPP_FLAGS -DSYCL_DISABLE_FALLBACK_ASSERT=0 -fsycl-targets=nvptx64-nvidia-cuda,spir64 -fsycl-id-queries-fit-in-int -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Wno-unknown-cuda-version -Wno-linker-warnings -Xcuda-ptxas -v -fgpu-inline-threshold=10000 -DNDEBUG)
-# -fcuda-approx-transcendentals -ffp-contract=fast -fcuda-flush-denormals-to-zero -Xsycl-target-backend=spir64_x86_64 --march=avx
-#set(DPCPP_FLAGS -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfx902 -fsycl-id-queries-fit-in-int)
-#set(DPCPP_FLAGS -fsycl-targets=spir64 -fsycl-id-queries-fit-in-int)
+if (SYCL STREQUAL CUDA)
+    set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Wno-unknown-cuda-version -Xcuda-ptxas -v -fgpu-inline-threshold=10000)
+elseif (SYCL STREQUAL HIP)
+    set(DPCPP_FLAGS -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend --offload-arch=gfx902 -fsycl-id-queries-fit-in-int -fgpu-inline-threshold=1000)
+elseif (SYCL STREQUAL CPU)
+    set(DPCPP_FLAGS -fsycl-targets=spir64_x86_64)
+endif ()
 
 include(cmake/FindSYCL.cmake)
 
