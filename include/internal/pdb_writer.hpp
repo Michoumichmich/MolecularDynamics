@@ -10,7 +10,7 @@ namespace sim {
 class pdb_writer {
 public:
     explicit pdb_writer(const std::string& file_name) : filename_(file_name), fs(file_name) {
-        if (file_name.empty()) { std::cout << "Empty file name given. " << std::endl; }
+        //    if (file_name.empty()) { std::cout << "Empty file name given. " << std::endl; }
     }
 
     template<typename T> void store_new_iter(const std::vector<coordinate<T>> particules, int i) {

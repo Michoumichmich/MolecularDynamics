@@ -4,19 +4,23 @@
 
 template<typename T> static inline std::vector<sim::coordinate<T>> generate_particules(size_t size, T spacing) {
     std::vector<sim::coordinate<T>> out(size);
-    for (auto& particule: out) { particule = sim::internal::generate_random_value<T>(0., std::pow(size, 0.33) * spacing); }
+    auto max = std::pow(size, 0.33) * spacing;
+    std::generate(out.begin(), out.end(), [&]() -> sim::coordinate<T> {
+        return {sim::internal::generate_random_value<T>(-max, max), sim::internal::generate_random_value<T>(-max, max), sim::internal::generate_random_value<T>(-max, max)};
+    });
     return out;
 }
 
-
 template<typename T> void cpu_backend_benchmark_impl(benchmark::State& state) {
-    const sim::configuration<T> config{.out_file = ""};
+    const sim::configuration<T> config{
+            .dt = 0.0001,
+            .use_berdensten_thermostate = false,
+            .out_file = "",
+    };
     const auto size = static_cast<size_t>(state.range(0));
     const auto coordinates = generate_particules<T>(size, 10 * config.r_star_);
-
     auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
     simulation.run_iter();
-
 
     for (auto _: state) {
         auto start = std::chrono::high_resolution_clock::now();
@@ -29,7 +33,11 @@ template<typename T> void cpu_backend_benchmark_impl(benchmark::State& state) {
 }
 
 template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
-    const sim::configuration<T> config{.out_file = ""};
+    const sim::configuration<T> config{
+            .dt = 0.0001,
+            .use_berdensten_thermostate = false,
+            .out_file = "",
+    };
     const auto size = static_cast<size_t>(state.range(0));
     const auto coordinates = generate_particules<T>(size, 10 * config.r_star_);
 
@@ -49,7 +57,7 @@ template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
 #ifdef BUILD_FLOAT
 static inline auto lennard_jones_sycl_float(auto& state) { sycl_backend_benchmark_impl<float>(state); }
 static inline auto lennard_jones_sequential_float(auto& state) { cpu_backend_benchmark_impl<float>(state); }
-BENCHMARK(lennard_jones_sycl_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(1024, 262144)->UseManualTime();
+BENCHMARK(lennard_jones_sycl_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 262144)->UseManualTime();
 BENCHMARK(lennard_jones_sequential_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 4096)->UseManualTime();
 #endif
 

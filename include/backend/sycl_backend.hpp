@@ -39,12 +39,22 @@ private:
 
     mutable sycl::queue q;                                //
     size_t size_;                                         //
-    size_t max_work_group_size_;                          //
     sycl_unique_device_ptr<coordinate<T>> coordinates_;   //
     sycl_unique_device_ptr<coordinate<T>> momentums_;     // Vi * mi
     sycl_unique_device_ptr<coordinate<T>> forces_;        // Lennard Jones Field
     sycl_unique_device_ptr<T> particule_energy_;          // Lennard Jones Field
     mutable std::vector<coordinate<T>> tmp_buf_;          //
+
+public:
+    struct kernel_configs {
+        size_t max_work_group_size_;         //
+        size_t max_work_groups_lennard_1;    //
+        size_t max_work_groups_lennard_27;   //
+        size_t max_reduction_size;           //
+    };
+
+private:
+    kernel_configs configs;
 };
 
 
