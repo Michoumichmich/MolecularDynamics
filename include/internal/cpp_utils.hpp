@@ -40,32 +40,6 @@ constexpr auto icbrt(unsigned x) {
 }
 
 
-template<int N, typename T> constexpr T integral_power_helper(const T& y, const T& x) {
-    if constexpr (N < 0) {
-        return integral_power_helper<-N, T>(y, T(1) / x);
-    } else if constexpr (N == 0) {
-        return y;
-    } else if constexpr (N == 1) {
-        return x * y;
-    } else if constexpr (N % 2 == 0) {
-        return integral_power_helper<N / 2, T>(y, x * x);
-    } else {
-        return integral_power_helper<(N - 1) / 2, T>(y * x, x * x);
-    }
-}
-
-
-template<int N, typename T> constexpr T integral_power(const T& v) {
-    static_assert(integral_power_helper<0>(1, 0) == 1);
-    static_assert(integral_power_helper<1>(1, 0) == 0);
-    static_assert(integral_power_helper<0>(1, 5) == 1);
-    static_assert(integral_power_helper<1>(1, 5) == 5);
-    static_assert(integral_power_helper<2>(1, 5) == 25);
-    static_assert(integral_power_helper<3>(1, 5) == 125);
-    return integral_power_helper<N>(T(1), v);
-}
-
-
 static inline constexpr size_t isqrt_impl(size_t sq, size_t dlt, size_t value) { return sq <= value ? isqrt_impl(sq + dlt, dlt + 2, value) : (dlt >> 1) - 1; }
 
 static inline constexpr size_t isqrt(size_t value) { return isqrt_impl(1, 3, value); }

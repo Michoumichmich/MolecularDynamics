@@ -17,13 +17,13 @@ public:
      * @param particules
      * @param config
      */
-    inline molecular_dynamics(const std::vector<coordinate<T>>& particules, configuration<T> config, backend<T> be = {})
+    inline molecular_dynamics(const std::vector<coordinate<T>>& particules, configuration<T> config, backend<T>&& be = {})
         : configuration_(config),     //
           simulation_idx_(0),         //
           forces_sum_(),              //
           lennard_jones_energy_(),    //
           writer_(config.out_file),   //
-          backend_(be) {
+          backend_(std::move(be)) {
 
         backend_.init_backend(std::move(particules));
 

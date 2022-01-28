@@ -1,4 +1,5 @@
 #pragma once
 #include <backend/cpu_backend.hpp>
+#include <backend/sycl_backend.hpp>
 #include <molecular_dynamics.hpp>
 #include <sim_user_helpers.hpp>

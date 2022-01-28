@@ -31,14 +31,14 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
                 const coordinate<T> delta{sym.x() * config.L_, sym.y() * config.L_, sym.z() * config.L_};
                 const auto other_particule = delta + particules[j];
                 T squared_distance = compute_squared_distance(this_particule, other_particule);
-                if (config.use_cutoff && squared_distance > internal::integral_power<2>(config.r_cut_)) continue;
+                if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
 
                 internal::assume(squared_distance != T{});
                 //if (squared_distance == T{}) { throw std::runtime_error("Got null distance"); }
 
                 const T frac_pow_2 = config.r_star_ * config.r_star_ / squared_distance;
-                const T frac_pow_6 = internal::integral_power<3>(frac_pow_2);
-                this_particule_energy += internal::integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
+                const T frac_pow_6 = integral_power<3>(frac_pow_2);
+                this_particule_energy += integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
                 const T force_prefactor = (frac_pow_6 - 1.) * frac_pow_6 * frac_pow_2;
                 forces[i] += (this_particule - other_particule) * force_prefactor;
             }
