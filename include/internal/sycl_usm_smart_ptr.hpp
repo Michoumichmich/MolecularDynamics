@@ -35,8 +35,6 @@ public:
     [[nodiscard]] inline size_t size() const noexcept { return count_; }
 
     [[nodiscard]] inline sycl::multi_ptr<T, sycl::access::address_space::global_space> get_multi() const noexcept { return {std::unique_ptr<T, usm_deleter<T>>::get()}; }
-
-    [[nodiscard]] inline sycl::span<T> get_span() const noexcept { return {std::unique_ptr<T, usm_deleter<T>>::get(), count_}; }
 };
 
 template<typename T> using sycl_unique_device_ptr = usm_unique_ptr<T, sycl::usm::alloc::device>;

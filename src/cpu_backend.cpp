@@ -4,13 +4,13 @@ namespace sim {
 /**
  *
  * @tparam T Floating point type
- * @param particules std::vector of particules on the host
+ * @param coordinates std::vector of particules on the host
  * @param config Simulation configuration
  * @return tuple with the forces, summed_forces and the energy
  */
 template<typename T, int n_sym>
 static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_sequential(   //
-        const std::vector<coordinate<T>>& particules,                                        //
+        const std::vector<coordinate<T>>& coordinates,                                       //
         const configuration<T>& config,                                                      //
         std::vector<coordinate<T>>& forces) {
     auto summed_forces = coordinate<T>{};
@@ -18,18 +18,18 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
 
 #pragma omp declare reduction(+ : coordinate <T> : omp_out += omp_in)   // initializer(omp_priv = coordinate <double>{}))
 
-#pragma omp parallel for default(none) shared(particules, config, forces) reduction(+ : energy, summed_forces)
-    for (auto i = 0U; i < particules.size(); ++i) {
+#pragma omp parallel for default(none) shared(coordinates, config, forces) reduction(+ : energy, summed_forces)
+    for (auto i = 0U; i < coordinates.size(); ++i) {
         forces[i] = {};
         auto this_particule_energy = T{};
-        const auto this_particule = particules[i];
-        for (auto j = 0U; j < particules.size(); ++j) {
+        const auto this_particule = coordinates[i];
+        for (auto j = 0U; j < coordinates.size(); ++j) {
 
 #pragma unroll
             for (const auto& sym: get_symetries<n_sym>()) {
                 if (i == j && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) continue;
                 const coordinate<T> delta{sym.x() * config.L_, sym.y() * config.L_, sym.z() * config.L_};
-                const auto other_particule = delta + particules[j];
+                const auto other_particule = delta + coordinates[j];
                 T squared_distance = compute_squared_distance(this_particule, other_particule);
                 if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
 
@@ -55,7 +55,7 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
  * Runs one iteration of the velocity verlet algorithm.
  * @tparam T float type
  * @tparam n_sym 1 or 27
- * @param particules inout
+ * @param coordinates inout
  * @param forces inout
  * @param momentums inout
  * @param config
@@ -63,26 +63,26 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
  */
 template<typename T, int n_sym>
 static inline std::tuple<coordinate<T>, T> velocity_verlet_sequential(   //
-        std::vector<coordinate<T>>& particules,                          //
+        std::vector<coordinate<T>>& coordinates,                         //
         std::vector<coordinate<T>>& forces,                              //
         std::vector<coordinate<T>>& momentums,                           //
         const configuration<T>& config) noexcept {
 
-    internal::assume(particules.size() == forces.size() && forces.size() == momentums.size());
-    const size_t N = particules.size();
+    internal::assume(coordinates.size() == forces.size() && forces.size() == momentums.size());
+    const size_t N = coordinates.size();
 
     // First step: half step update of the momentums.
     for (size_t i = 0; i < N; ++i) { momentums[i] += config.conversion_force * forces[i] * config.dt / 2; }
 
     // Second step: update particules positions
-    for (size_t i = 0; i < N; ++i) { particules[i] += config.dt * momentums[i] / config.m_i; }
+    for (size_t i = 0; i < N; ++i) { coordinates[i] += config.dt * momentums[i] / config.m_i; }
 
-    compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
+    compute_lennard_jones_field_inplace_sequential<T, n_sym>(coordinates, config, forces);
 
     // Last step: update momentums given new forces
     for (size_t i = 0; i < N; ++i) { momentums[i] += config.conversion_force * forces[i] * config.dt / 2; }
 
-    auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(particules, config, forces);
+    auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(coordinates, config, forces);
     return std::tuple{sum, energy};
 }
 

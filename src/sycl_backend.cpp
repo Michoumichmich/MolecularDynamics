@@ -4,6 +4,24 @@
 namespace sim {
 
 
+template<typename KernelName> static inline size_t sycl_max_work_items(sycl::queue& q) {
+    size_t max_items = std::max<size_t>(1U, std::min<size_t>(2048U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
+#if defined(SYCL_IMPLEMENTATION_INTEL) || defined(SYCL_IMPLEMENTATION_ONEAPI)
+    try {
+        sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
+        auto kernel = sycl::get_kernel_bundle<sycl::bundle_state::executable>(q.get_context()).get_kernel(id);
+        //size_t register_count = kernel.get_info<sycl::info::kernel_device_specific::ext_codeplay_num_regs>(q.get_device());
+        max_items = std::min(max_items, kernel.get_info<sycl::info::kernel_device_specific::work_group_size>(q.get_device()));
+    } catch (std::exception& e) {
+        std::cout << "Couldn't read kernel properties for device: " << q.get_device().get_info<sycl::info::device::name>() << " got exception: " << e.what() << std::endl;
+    }
+#else
+    if (q.get_device().is_gpu()) { max_items = std::min<size_t>(max_items, 1024); }
+#endif
+    return max_items;
+}
+
+
 template<typename T> static inline void prefetch_constant(const T* ptr) {
 #if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
     if constexpr (sizeof(T*) == 8) {
@@ -22,78 +40,41 @@ static inline auto compute_range_size(size_t size, size_t work_group_size) {
 
 
 template<typename T, int n_sym>
-static inline auto internal_simulator_on_sycl(                                          //
-        sycl::queue& q, size_t size, size_t work_group_size,                            //
-        const coordinate<T>* __restrict particules, coordinate<T>* __restrict forces,   //
+static inline auto update_lennard_jones_field(                                           //
+        sycl::queue& q, size_t size, size_t work_group_size,                             //
+        const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces,   //
         const configuration<T>& config, sycl::event in_evt) {
 
     return q.submit([&](sycl::handler& cgh) {
-        auto particules_tile_ = sycl::accessor<coordinate<T>, 1, sycl::access_mode::read_write, sycl::access::target::local>(work_group_size, cgh);
-        cgh.depends_on(in_evt);
-        cgh.parallel_for(compute_range_size(size, work_group_size),
-                         [size = size, L = config.L_, particules = particules, particules_tile_ = particules_tile_, r_star = config.r_star_, r_cut = config.r_cut_,
-                          epsilon_star = config.epsilon_star_, forces = forces, use_cutoff = config.use_cutoff](sycl::nd_item<1> item) {
-                             /* Getting space coordinates */
-                             const uint32_t global_id = item.get_global_linear_id();
-                             const uint32_t local_id = item.get_local_linear_id();
-                             const uint32_t group_count = item.get_group_range().size();
-                             const uint32_t group_size = item.get_local_range().size();
+        cgh.depends_on(std::move(in_evt));
+        cgh.parallel_for(compute_range_size(size, work_group_size), [size = size, L = config.L_, coordinates = coordinates, r_star = config.r_star_, r_cut = config.r_cut_,
+                                                                     forces = forces, use_cutoff = config.use_cutoff](sycl::nd_item<1> item) {
+            const auto i = item.get_global_linear_id();
+            if (i >= size) return;
+            forces[i] = {};
+            auto this_particule_energy = T{};
+            const auto this_particule = coordinates[i];
+            for (auto j = 0U; j < size; ++j) {
 
-                             /* Whether the current work item takes part in the computation or not. We cannot return as it needs to be present for further barriers. */
-                             const bool is_active_work_item = global_id < size;
-
-                             /* Setting up local variables */
-                             const coordinate<T> this_work_item_particule = is_active_work_item ? particules[global_id] : coordinate<T>{};
-
-                             /* Local reducers */
-                             auto this_particule_energy = T{};
-                             auto this_particule_force = coordinate<T>{0, 0, 0};
-
-                             /* Loop over 'how many tiles we need'. Each tile being a sequence of particles loaded into local memory */
-                             for (uint32_t tile_id = 0U; tile_id < group_count; ++tile_id) {
-                                 const uint32_t global_particule_idx = tile_id * group_size + local_id;
-                                 const bool is_active_tile = global_particule_idx < size;
-                                 const uint32_t this_tile_size = std::min<uint32_t>(group_size, size - tile_id * group_size);
-
-                                 /* Loading data (as tiles) into local_memory */
-                                 const coordinate<T> new_particule = is_active_tile ? particules[global_particule_idx] : coordinate<T>{};
-                                 sycl::group_barrier(item.get_group());
-                                 particules_tile_[local_id] = new_particule;
-                                 sycl::group_barrier(item.get_group());
-
-                                 if (!is_active_work_item) continue; /* Current not considered as we're ouf of range */
-                                 prefetch_constant(particules + global_particule_idx + group_size);
-
-                                 /* Doing the computation between our own particule and the ones from the tile */
-                                 for (uint32_t j = 0U; j < this_tile_size; ++j) {
 #pragma unroll
-                                     for (const auto& sym: get_symetries<n_sym>()) {
-                                         if (global_id == j + tile_id * group_size && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) {
-                                             continue; /* We eliminate the case where the two particles are the same */
-                                         }
+                for (const auto& sym: get_symetries<n_sym>()) {
+                    if (i == j && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) continue;
+                    const coordinate<T> delta{sym.x() * L, sym.y() * L, sym.z() * L};
+                    const auto other_particule = delta + coordinates[j];
+                    T squared_distance = compute_squared_distance(this_particule, other_particule);
+                    if (use_cutoff && squared_distance > integral_power<2>(r_cut)) continue;
 
-                                         /* Getting the other particle 'j' and it's perturbation */
-                                         const coordinate<T> delta{sym.x() * L, sym.y() * L, sym.z() * L};
+                    internal::assume(squared_distance != T{});
+                    //if (squared_distance == T{}) { throw std::runtime_error("Got null distance"); }
 
-                                         const coordinate<T> other_particule = delta + particules_tile_[j];
-                                         const T squared_distance = compute_squared_distance(this_work_item_particule, other_particule);
-                                         /* If kernel uses radius cutoff, known at compile-time */
-                                         if (use_cutoff && squared_distance > integral_power<2>(r_cut)) continue;
-
-                                         //if constexpr (std::is_same_v<T, sycl::half>) {if (squared_distance == T{}) continue;}
-
-                                         const T frac_pow_2 = r_star * r_star / squared_distance;
-                                         const T frac_pow_6 = integral_power<3>(frac_pow_2);
-                                         this_particule_energy += integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
-                                         const T force_prefactor = (frac_pow_6 - 1) * frac_pow_6 * frac_pow_2;
-                                         this_particule_force += (this_work_item_particule - other_particule) * force_prefactor;
-                                     }
-                                 }
-                             }
-
-                             if (!is_active_work_item) return;
-                             forces[global_id] = this_particule_force * (-48) * epsilon_star;
-                         });
+                    const T frac_pow_2 = r_star * r_star / squared_distance;
+                    const T frac_pow_6 = integral_power<3>(frac_pow_2);
+                    this_particule_energy += integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
+                    const T force_prefactor = (frac_pow_6 - 1.) * frac_pow_6 * frac_pow_2;
+                    forces[i] += (this_particule - other_particule) * force_prefactor;
+                }
+            }
+        });
     });
 }
 
@@ -109,26 +90,16 @@ static inline auto internal_simulator_on_sycl(                                  
  * @return
  */
 template<typename T>
-static inline auto run_simulation_sycl_device_memory(                                   //
-        sycl::queue& q,                                                                 //
-        size_t size, size_t max_work_group_size_,                                       //
-        const coordinate<T>* __restrict particules, coordinate<T>* __restrict forces,   //
+static inline auto run_simulation_sycl_device_memory(                                    //
+        sycl::queue& q,                                                                  //
+        size_t size, size_t max_work_group_size,                                         //
+        const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces,   //
         const configuration<T>& config, sycl::event in_evt) {
 
-    //auto subgroup_sizes = q.get_device().get_info<sycl::info::device::sub_group_sizes>();
-    //for (auto size: subgroup_sizes) { std::cout << size << std::endl; }
-#ifdef SYCL_IMPLEMENTATION_ONEAPI
-    if (q.get_device().is_cpu()) {
-        max_work_group_size_ = std::min(32UL, max_work_group_size_);
-    } else if (q.get_device().is_gpu()) {
-        max_work_group_size_ = std::min(512UL, max_work_group_size_);
-    }
-#endif
-
     if (config.n_symetries == 1) {
-        return internal_simulator_on_sycl<T, 1>(q, size, max_work_group_size_, particules, forces, config, in_evt);
+        return update_lennard_jones_field<T, 1>(q, size, max_work_group_size, coordinates, forces, config, in_evt);
     } else if (config.n_symetries == 27) {
-        return internal_simulator_on_sycl<T, 27>(q, size, max_work_group_size_, particules, forces, config, in_evt);
+        return update_lennard_jones_field<T, 27>(q, size, max_work_group_size, coordinates, forces, config, in_evt);
         //        } else if (config.n_symetries == 125) {
         //            return internal_simulator_on_sycl<T, multiple_size, 125>(q, work_group_size, particules, forces, config, evt);
     } else {
@@ -144,6 +115,14 @@ template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::init_lennard_
 
 
 template<typename T> T sycl_backend<T>::get_momentums_squared_norm() const {
+    auto max_group_size = max_work_group_size_;
+#ifdef SYCL_IMPLEMENTATION_ONEAPI
+    if (q.get_device().is_cpu()) {
+        max_group_size = std::min(64UL, max_group_size);
+    } else if (q.get_device().is_gpu()) {
+        max_group_size = std::min(512UL, max_group_size);
+    }
+#endif
     T sum{};
     {
         auto sum_buffer = sycl::buffer<T>(&sum, 1U);
@@ -153,9 +132,10 @@ template<typename T> T sycl_backend<T>::get_momentums_squared_norm() const {
 #else
              auto reduction_sum = sycl::reduction(sum_buffer, cgh, sycl::plus<>{});
 #endif
-             cgh.parallel_for(compute_range_size(size_, max_work_group_size_), reduction_sum, [=, momentums = momentums_.get(), size_ = size_](sycl::nd_item<1> it, auto& red) {
-                 auto i = it.get_global_linear_id();
-                 if (i < size_) { red.combine(sycl::dot(momentums[i], momentums[i])); }
+             cgh.parallel_for(compute_range_size(size_, max_group_size), reduction_sum, [momentums = momentums_.get(), size_ = size_](sycl::nd_item<1> it, auto& red) {
+                 const auto i = it.get_global_linear_id();
+                 if (i >= size_) return;
+                 red.combine(sycl::dot(momentums[i], momentums[i]));
              });
          }).wait_and_throw();
     }
@@ -163,6 +143,15 @@ template<typename T> T sycl_backend<T>::get_momentums_squared_norm() const {
 }
 
 template<typename T> coordinate<T> sycl_backend<T>::mean_kinetic_momentums() const {
+    auto max_group_size = max_work_group_size_;
+#ifdef SYCL_IMPLEMENTATION_ONEAPI
+    if (q.get_device().is_cpu()) {
+        max_group_size = std::min(32UL, max_group_size);
+    } else if (q.get_device().is_gpu()) {
+        max_group_size = std::min(512UL, max_group_size);
+    }
+#endif
+
     coordinate<T> mean{};   // Sum of vi * mi;
     {
         auto x_reduction_buffer = sycl::buffer<T>(&mean.x(), 1U);
@@ -178,15 +167,14 @@ template<typename T> coordinate<T> sycl_backend<T>::mean_kinetic_momentums() con
              auto reduction_y = sycl::reduction(y_reduction_buffer, cgh, sycl::plus<>{});
              auto reduction_z = sycl::reduction(z_reduction_buffer, cgh, sycl::plus<>{});
 #endif
-             cgh.parallel_for(compute_range_size(size_, max_work_group_size_), reduction_x, reduction_y, reduction_z,   //
-                              [=, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it, auto& x, auto& y, auto& z) {
-                                  auto i = it.get_global_linear_id();
-                                  if (i < size_) {
-                                      auto momentum = momentums[i];
-                                      x.combine(momentum.x());
-                                      y.combine(momentum.y());
-                                      z.combine(momentum.z());
-                                  }
+             cgh.parallel_for(compute_range_size(size_, max_group_size), reduction_x, reduction_y, reduction_z,   //
+                              [size = size_, momentums = momentums_.get()](sycl::nd_item<1> it, auto& x, auto& y, auto& z) {
+                                  const auto i = it.get_global_linear_id();
+                                  if (i >= size) return;
+                                  const auto momentum = momentums[i];
+                                  x.combine(momentum.x());
+                                  y.combine(momentum.y());
+                                  z.combine(momentum.z());
                               });
          }).wait_and_throw();
     }
@@ -202,16 +190,18 @@ template<typename T> void sycl_backend<T>::randinit_momentums(T min, T max) {
 
 template<typename T> void sycl_backend<T>::center_kinetic_momentums() {
     auto mean = mean_kinetic_momentums();
-    q.parallel_for(compute_range_size(size_, max_work_group_size_), [=, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
-         auto i = it.get_global_linear_id();
-         if (i < size_) { momentums[i] -= mean; }
+    q.parallel_for(compute_range_size(size_, max_work_group_size_), [mean = mean, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
+         const auto i = it.get_global_linear_id();
+         if (i >= size_) return;
+         momentums[i] -= mean;
      }).wait();
 }
 
 template<typename T> void sycl_backend<T>::apply_multiplicative_correction_to_momentums(T coeff) {
-    q.parallel_for(compute_range_size(size_, max_work_group_size_), [=, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
-         auto i = it.get_global_linear_id();
-         if (i < size_) { momentums[i] *= coeff; }
+    q.parallel_for(compute_range_size(size_, max_work_group_size_), [coeff = coeff, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
+         const auto i = it.get_global_linear_id();
+         if (i >= size_) return;
+         momentums[i] *= coeff;
      }).wait();
 }
 
@@ -223,19 +213,22 @@ template<typename T> void sycl_backend<T>::store_particules_coordinates(pdb_writ
 
 template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::run_velocity_verlet(const configuration<T>& config) {
     // First step: half step update of the momentums.
-    auto evt = q.parallel_for(compute_range_size(size_, max_work_group_size_), [size = size_, momentums = momentums_.get(), forces = forces_.get(),
-                                                                                conversion_force = config.conversion_force, dt = config.dt](sycl::nd_item<1> it) {
-        auto i = it.get_global_linear_id();
-        if (i < size) { momentums[i] += conversion_force * forces[i] * dt / 2; }
-    });
+    auto evt = q.parallel_for(   //
+            compute_range_size(size_, max_work_group_size_),
+            [size = size_, momentums = momentums_.get(), forces = forces_.get(), conversion_force = config.conversion_force, dt = config.dt](sycl::nd_item<1> it) {
+                const auto i = it.get_global_linear_id();
+                if (i >= size) return;
+                momentums[i] += conversion_force * forces[i] * dt / 2;
+            });
 
     // Second step: update particules positions
     auto evt2 = q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(evt);
-        cgh.parallel_for(compute_range_size(size_, max_work_group_size_),   //
-                         [size = size_, particules = coordinates_.get(), momentums = momentums_.get(), m_i = config.m_i, dt = config.dt](sycl::nd_item<1> it) {
-                             auto i = it.get_global_linear_id();
-                             if (i < size) { particules[i] += dt * momentums[i] / m_i; }
+        cgh.parallel_for(compute_range_size(size_, max_work_group_size_),
+                         [size = size_, coordinates = coordinates_.get(), momentums = momentums_.get(), m_i = config.m_i, dt = config.dt](sycl::nd_item<1> it) {
+                             const auto i = it.get_global_linear_id();
+                             if (i >= size) return;
+                             coordinates[i] += dt * momentums[i] / m_i;
                          });
     });
 
@@ -244,10 +237,11 @@ template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::run_velocity_
     // Last step: update momentums given new forces
     auto evt4 = q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(evt3);
-        cgh.parallel_for(compute_range_size(size_, max_work_group_size_),   //
+        cgh.parallel_for(compute_range_size(size_, max_work_group_size_),
                          [size = size_, momentums = momentums_.get(), forces = forces_.get(), conversion_force = config.conversion_force, dt = config.dt](sycl::nd_item<1> it) {
-                             auto i = it.get_global_linear_id();
-                             if (i < size) { momentums[i] += conversion_force * forces[i] * dt / 2; }
+                             const auto i = it.get_global_linear_id();
+                             if (i >= size) return;
+                             momentums[i] += conversion_force * forces[i] * dt / 2;
                          });
     });
 
@@ -258,8 +252,8 @@ template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::run_velocity_
 
 template<typename T>
 sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue) : q(std::move(queue)), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), tmp_buf_(size) {
-    auto max_compute_units = q.get_device().get_info<sycl::info::device::max_compute_units>();
-    max_work_group_size_ = std::min(size / max_compute_units, q.get_device().get_info<sycl::info::device::max_work_group_size>());
+    auto max_compute_units = q.get_device().template get_info<sycl::info::device::max_compute_units>();
+    max_work_group_size_ = std::max(1UL, std::min(size / max_compute_units, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
 }
 
 

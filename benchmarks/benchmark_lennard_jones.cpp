@@ -46,17 +46,10 @@ template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
     state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries));
 }
 
-#ifdef BUILD_HALF
-static inline auto lennard_jones_sycl_half(auto& state) { sycl_backend_benchmark_impl<sycl::half>(state); }
-static inline auto lennard_jones_sequential_half(auto& state) { cpu_backend_benchmark_impl<sycl::half>(state); }
-BENCHMARK(lennard_jones_sycl_half)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 262144)->UseManualTime();
-BENCHMARK(lennard_jones_sequential_half)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 4096)->UseManualTime();
-#endif
-
 #ifdef BUILD_FLOAT
 static inline auto lennard_jones_sycl_float(auto& state) { sycl_backend_benchmark_impl<float>(state); }
 static inline auto lennard_jones_sequential_float(auto& state) { cpu_backend_benchmark_impl<float>(state); }
-BENCHMARK(lennard_jones_sycl_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 262144)->UseManualTime();
+BENCHMARK(lennard_jones_sycl_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(1024, 262144)->UseManualTime();
 BENCHMARK(lennard_jones_sequential_float)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 4096)->UseManualTime();
 #endif
 
@@ -66,5 +59,14 @@ static inline auto lennard_jones_sequential_double(auto& state) { cpu_backend_be
 BENCHMARK(lennard_jones_sycl_double)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 262144)->UseManualTime();
 BENCHMARK(lennard_jones_sequential_double)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 4096)->UseManualTime();
 #endif
+
+
+#ifdef BUILD_HALF
+static inline auto lennard_jones_sycl_half(auto& state) { sycl_backend_benchmark_impl<sycl::half>(state); }
+static inline auto lennard_jones_sequential_half(auto& state) { cpu_backend_benchmark_impl<sycl::half>(state); }
+BENCHMARK(lennard_jones_sycl_half)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 262144)->UseManualTime();
+BENCHMARK(lennard_jones_sequential_half)->Unit(benchmark::kMillisecond)->RangeMultiplier(2)->Range(256, 4096)->UseManualTime();
+#endif
+
 
 BENCHMARK_MAIN();
