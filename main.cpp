@@ -2,8 +2,8 @@
 
 template<typename T> void run_example(size_t n, const std::vector<sim::coordinate<T>>& coordinates, sim::configuration<T> config = {}) {
     std::cout << config << std::endl;
-    auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
-    //auto simulation = sim::molecular_dynamics<T, sim::sycl_backend>(coordinates, config, sim::sycl_backend<T>{coordinates.size()});
+    //auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
+    auto simulation = sim::molecular_dynamics<T, sim::sycl_backend>(coordinates, config, sim::sycl_backend<T>{coordinates.size()});
     for (size_t i = 0; i < n; ++i) {
         std::cout << simulation << std::endl;
         simulation.run_iter();
