@@ -24,9 +24,9 @@ template<typename T> struct configuration {
     static constexpr T r_star_ = static_cast<T>(3);           // R* distance: 3A
     static constexpr T epsilon_star_ = static_cast<T>(0.2);   //
     static constexpr bool use_cutoff = true;                  //
-    static constexpr T r_cut_ = static_cast<T>(35);           // Should be 10 Angstroms
-    static constexpr int n_symetries = 27;                    //
-    static constexpr T L_ = static_cast<T>(35);               // 30 in the subject
+    T r_cut_ = static_cast<T>(35);                            // Should be 10 Angstroms
+    int n_symetries = 27;                                     //
+    T L_ = static_cast<T>(35);                                // 30 in the subject
 
     // PDB Out settings
     int iter_per_frame = 100;                                      //

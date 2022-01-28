@@ -95,8 +95,8 @@ static inline auto update_lennard_jones_field_dispatch_impl(                    
         return update_lennard_jones_field_impl_sycl<T, 1>(q, size, configs.max_work_groups_lennard_1, coordinates, forces, energies, config, in_evt);
     } else if (config.n_symetries == 27) {
         return update_lennard_jones_field_impl_sycl<T, 27>(q, size, configs.max_work_groups_lennard_27, coordinates, forces, energies, config, in_evt);
-        //        } else if (config.n_symetries == 125) {
-        //            return internal_simulator_on_sycl<T, multiple_size, 125>(q, work_group_size, particules, forces, config, evt);
+    } else if (config.n_symetries == 125) {
+        return update_lennard_jones_field_impl_sycl<T, 125>(q, size, configs.max_work_groups_lennard_125, coordinates, forces, energies, config, in_evt);
     } else {
         throw std::runtime_error("Unsupported");
     }
@@ -191,6 +191,7 @@ sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue, bool maximise_occu
 
     configs.max_work_groups_lennard_1 = std::min(configs.max_work_group_size_, max_work_groups_for_kernel<lennard_jones_kernel<T, 1>>(q));
     configs.max_work_groups_lennard_27 = std::min(configs.max_work_group_size_, max_work_groups_for_kernel<lennard_jones_kernel<T, 27>>(q));
+    configs.max_work_groups_lennard_125 = std::min(configs.max_work_group_size_, max_work_groups_for_kernel<lennard_jones_kernel<T, 125>>(q));
 
     configs.max_reduction_size = configs.max_work_group_size_;
 #ifdef SYCL_IMPLEMENTATION_ONEAPI
