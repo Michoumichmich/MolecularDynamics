@@ -26,9 +26,12 @@ public:
 
     [[nodiscard]] coordinate<T> mean_kinetic_momentums() const override;
 
-    std::tuple<coordinate<T>, T> run_velocity_verlet(const configuration<T>& config) override;
+    void run_velocity_verlet(const configuration<T>& config) override;
 
-    std::tuple<coordinate<T>, T> init_lennard_jones_field(const configuration<T>& config) override;
+    void init_lennard_jones_field(const configuration<T>& config) override;
+
+    // The SYCL backend does not recompute these values systematically, so we'll have to do it.
+    [[nodiscard]] std::tuple<coordinate<T>, T> get_last_lennard_jones_metrics() const override;
 
 private:
     T reduce_energies() const;

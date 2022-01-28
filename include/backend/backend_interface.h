@@ -41,6 +41,8 @@ public:
      */
     virtual void center_kinetic_momentums() = 0;
 
+    virtual std::tuple<coordinate<T>, T> get_last_lennard_jones_metrics() const = 0;
+
     virtual coordinate<T> mean_kinetic_momentums() const = 0;
 
     /**
@@ -51,13 +53,13 @@ public:
     /**
      * Returns sum of field and potential energy.
      */
-    virtual std::tuple<coordinate<T>, T> run_velocity_verlet(const configuration<T>& config) = 0;
+    virtual void run_velocity_verlet(const configuration<T>& config) = 0;
 
     /**
      * Returns sum of field and potential energy.
      * @param config
      * @return
      */
-    virtual std::tuple<coordinate<T>, T> init_lennard_jones_field(const configuration<T>& config) = 0;
+    virtual void init_lennard_jones_field(const configuration<T>& config) = 0;
 };
 }   // namespace sim

@@ -9,9 +9,9 @@ namespace sim {
  * @return tuple with the forces, summed_forces and the energy
  */
 template<typename T, int n_sym>
-static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_sequential(   //
-        const std::vector<coordinate<T>>& coordinates,                                       //
-        const configuration<T>& config,                                                      //
+static inline std::tuple<coordinate<T>, T> update_lennard_jones_field_cpu_impl(   //
+        const std::vector<coordinate<T>>& coordinates,                            //
+        const configuration<T>& config,                                           //
         std::vector<coordinate<T>>& forces) {
     auto summed_forces = coordinate<T>{};
     auto energy = T{};
@@ -50,6 +50,16 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
     return std::tuple(summed_forces, energy);
 }
 
+template<typename T> void cpu_backend<T>::init_lennard_jones_field(const configuration<T>& config) {
+    if (config.n_symetries == 1) {
+        last_lennard_jones_metrics_ = update_lennard_jones_field_cpu_impl<T, 1>(coordinates_, config, forces_);
+    } else if (config.n_symetries == 27) {
+        last_lennard_jones_metrics_ = update_lennard_jones_field_cpu_impl<T, 27>(coordinates_, config, forces_);
+    } else {
+        throw std::runtime_error("Unsupported");
+    }
+}
+
 
 /**
  * Runs one iteration of the velocity verlet algorithm.
@@ -62,10 +72,10 @@ static inline std::tuple<coordinate<T>, T> compute_lennard_jones_field_inplace_s
  * @return std::tuple{sum, energy}
  */
 template<typename T, int n_sym>
-static inline std::tuple<coordinate<T>, T> velocity_verlet_sequential(   //
-        std::vector<coordinate<T>>& coordinates,                         //
-        std::vector<coordinate<T>>& forces,                              //
-        std::vector<coordinate<T>>& momentums,                           //
+static inline std::tuple<coordinate<T>, T> velocity_verlet_cpu_impl(   //
+        std::vector<coordinate<T>>& coordinates,                       //
+        std::vector<coordinate<T>>& forces,                            //
+        std::vector<coordinate<T>>& momentums,                         //
         const configuration<T>& config) noexcept {
 
     internal::assume(coordinates.size() == forces.size() && forces.size() == momentums.size());
@@ -77,48 +87,26 @@ static inline std::tuple<coordinate<T>, T> velocity_verlet_sequential(   //
     // Second step: update particules positions
     for (size_t i = 0; i < N; ++i) { coordinates[i] += config.dt * momentums[i] / config.m_i; }
 
-    compute_lennard_jones_field_inplace_sequential<T, n_sym>(coordinates, config, forces);
+    update_lennard_jones_field_cpu_impl<T, n_sym>(coordinates, config, forces);
 
     // Last step: update momentums given new forces
     for (size_t i = 0; i < N; ++i) { momentums[i] += config.conversion_force * forces[i] * config.dt / 2; }
 
-    auto [sum, energy] = compute_lennard_jones_field_inplace_sequential<T, n_sym>(coordinates, config, forces);
+    auto [sum, energy] = update_lennard_jones_field_cpu_impl<T, n_sym>(coordinates, config, forces);
     return std::tuple{sum, energy};
 }
 
 
-/**
- * Runs an iteration of the Velocity Verlet algorithm.
- * @tparam T
- * @param config
- * @return
- */
-template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::run_velocity_verlet(const configuration<T>& config) {
+template<typename T> void cpu_backend<T>::run_velocity_verlet(const configuration<T>& config) {
     if (config.n_symetries == 1) {
-        return velocity_verlet_sequential<T, 1>(coordinates_, forces_, momentums_, config);
+        last_lennard_jones_metrics_ = velocity_verlet_cpu_impl<T, 1>(coordinates_, forces_, momentums_, config);
     } else if (config.n_symetries == 27) {
-        return velocity_verlet_sequential<T, 27>(coordinates_, forces_, momentums_, config);
+        last_lennard_jones_metrics_ = velocity_verlet_cpu_impl<T, 27>(coordinates_, forces_, momentums_, config);
     } else {
         throw std::runtime_error("Unsupported");
     }
 }
 
-
-/**
- *
- * @tparam T
- * @param config
- * @return
- */
-template<typename T> std::tuple<coordinate<T>, T> cpu_backend<T>::init_lennard_jones_field(const configuration<T>& config) {
-    if (config.n_symetries == 1) {
-        return compute_lennard_jones_field_inplace_sequential<T, 1>(coordinates_, config, forces_);
-    } else if (config.n_symetries == 27) {
-        return compute_lennard_jones_field_inplace_sequential<T, 27>(coordinates_, config, forces_);
-    } else {
-        throw std::runtime_error("Unsupported");
-    }
-}
 
 template<typename T> void cpu_backend<T>::randinit_momentums(T min, T max) {
     std::generate(momentums_.begin(), momentums_.end(), [=]() {   //

@@ -39,15 +39,21 @@ public:
         return mean / momentums_.size();
     }
 
-
     [[nodiscard]] inline size_t get_particules_count() const override { return size_; }
 
-    std::tuple<coordinate<T>, T> run_velocity_verlet(const configuration<T>& config) override;
+    void run_velocity_verlet(const configuration<T>& config) override;
 
-    std::tuple<coordinate<T>, T> init_lennard_jones_field(const configuration<T>& config) override;
+    void init_lennard_jones_field(const configuration<T>& config) override;
+
+    /**
+     * The CPU backends updates these values on each iteration so there's no need to recompute them.
+     * @return
+     */
+    [[nodiscard]] inline std::tuple<coordinate<T>, T> get_last_lennard_jones_metrics() const override { return last_lennard_jones_metrics_; }
 
 private:
     size_t size_{};
+    std::tuple<coordinate<T>, T> last_lennard_jones_metrics_{};
     std::vector<coordinate<T>> coordinates_{};   //
     std::vector<coordinate<T>> momentums_{};     // Vi * mi
     std::vector<coordinate<T>> forces_{};        // Lennard Jones Field

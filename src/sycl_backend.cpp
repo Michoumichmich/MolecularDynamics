@@ -41,7 +41,7 @@ static inline auto compute_range_size(size_t size, size_t work_group_size) {
 #include "sycl_backend_reductions.hpp"
 
 template<typename T, int n_sym>
-static inline auto update_lennard_jones_field(                                                                   //
+static inline auto update_lennard_jones_field_impl_sycl(                                                         //
         sycl::queue& q, size_t size, size_t work_group_size,                                                     //
         const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
@@ -83,27 +83,17 @@ static inline auto update_lennard_jones_field(                                  
 }
 
 
-/**
- * Dispatches the computation to the proper kernel
- * @tparam T
- * @param q
- * @param particules_device_in
- * @param forces_device_out
- * @param config
- * @param evt
- * @return
- */
 template<typename T>
-static inline auto run_simulation_sycl_device_memory(                                                            //
+static inline auto update_lennard_jones_field_dispatch_impl(                                                     //
         sycl::queue& q,                                                                                          //
         size_t size, size_t max_work_group_size,                                                                 //
         const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
 
     if (config.n_symetries == 1) {
-        return update_lennard_jones_field<T, 1>(q, size, max_work_group_size, coordinates, forces, energies, config, in_evt);
+        return update_lennard_jones_field_impl_sycl<T, 1>(q, size, max_work_group_size, coordinates, forces, energies, config, in_evt);
     } else if (config.n_symetries == 27) {
-        return update_lennard_jones_field<T, 27>(q, size, max_work_group_size, coordinates, forces, energies, config, in_evt);
+        return update_lennard_jones_field_impl_sycl<T, 27>(q, size, max_work_group_size, coordinates, forces, energies, config, in_evt);
         //        } else if (config.n_symetries == 125) {
         //            return internal_simulator_on_sycl<T, multiple_size, 125>(q, work_group_size, particules, forces, config, evt);
     } else {
@@ -112,9 +102,8 @@ static inline auto run_simulation_sycl_device_memory(                           
 }
 
 
-template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::init_lennard_jones_field(const configuration<T>& config) {
-    run_simulation_sycl_device_memory(q, size_, max_work_group_size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, sycl::event{}).wait();
-    return {compute_error_lennard_jones(), reduce_energies()};
+template<typename T> void sycl_backend<T>::init_lennard_jones_field(const configuration<T>& config) {
+    update_lennard_jones_field_dispatch_impl(q, size_, max_work_group_size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, sycl::event{}).wait();
 }
 
 
@@ -148,7 +137,7 @@ template<typename T> void sycl_backend<T>::store_particules_coordinates(pdb_writ
 }
 
 
-template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::run_velocity_verlet(const configuration<T>& config) {
+template<typename T> void sycl_backend<T>::run_velocity_verlet(const configuration<T>& config) {
     // First step: half step update of the momentums.
     auto evt = q.parallel_for(   //
             compute_range_size(size_, max_work_group_size_),
@@ -169,7 +158,7 @@ template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::run_velocity_
                          });
     });
 
-    auto evt3 = run_simulation_sycl_device_memory(q, size_, max_work_group_size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt2);
+    auto evt3 = update_lennard_jones_field_dispatch_impl(q, size_, max_work_group_size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt2);
 
     // Last step: update momentums given new forces
     auto evt4 = q.submit([&](sycl::handler& cgh) {
@@ -182,9 +171,8 @@ template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::run_velocity_
                          });
     });
 
-    auto evt5 = run_simulation_sycl_device_memory(q, size_, max_work_group_size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt4);
+    auto evt5 = update_lennard_jones_field_dispatch_impl(q, size_, max_work_group_size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt4);
     evt5.wait_and_throw();
-    return {compute_error_lennard_jones(), reduce_energies()};
 }
 
 template<typename T>
@@ -193,6 +181,8 @@ sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue)
     auto max_compute_units = q.get_device().template get_info<sycl::info::device::max_compute_units>();
     max_work_group_size_ = std::max(1UL, std::min(size / max_compute_units, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
 }
+
+template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::get_last_lennard_jones_metrics() const { return {compute_error_lennard_jones(), reduce_energies()}; }
 
 
 #ifdef BUILD_HALF
