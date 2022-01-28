@@ -5,14 +5,10 @@
 
 namespace sim {
 
-static inline auto compute_range_size(size_t size, size_t work_group_size) {
-    return sycl::nd_range<1>(work_group_size * ((size + work_group_size - 1) / work_group_size), work_group_size);
-}
-
 template<typename T> class sycl_backend : backend_interface<T> {
 
 public:
-    explicit sycl_backend(sycl::queue queue, size_t size);
+    explicit sycl_backend(size_t size, sycl::queue queue = sycl::queue{});
 
     inline void init_backend(const std::vector<coordinate<T>>& particules) override { q.copy(particules.data(), coordinates_.get(), size_).wait(); }
 

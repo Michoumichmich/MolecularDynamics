@@ -6,7 +6,7 @@ namespace sim {
 
 template<typename T> static inline void prefetch_constant(const T* ptr) {
 #if defined(__NVPTX__) && defined(__SYCL_DEVICE_ONLY__)
-    if constexpr (sizeof(ptr) == 8) {
+    if constexpr (sizeof(T*) == 8) {
         asm("prefetchu.L1 [%0];" : : "l"(ptr));
     } else {
         asm("prefetchu.L1 [%0];" : : "r"(ptr));
@@ -14,6 +14,10 @@ template<typename T> static inline void prefetch_constant(const T* ptr) {
 #else
     (void) ptr;
 #endif
+}
+
+static inline auto compute_range_size(size_t size, size_t work_group_size) {
+    return sycl::nd_range<1>(work_group_size * ((size + work_group_size - 1) / work_group_size), work_group_size);
 }
 
 
@@ -253,7 +257,7 @@ template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::run_velocity_
 }
 
 template<typename T>
-sycl_backend<T>::sycl_backend(sycl::queue queue, size_t size) : q(std::move(queue)), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), tmp_buf_(size) {
+sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue) : q(std::move(queue)), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), tmp_buf_(size) {
     auto max_compute_units = q.get_device().get_info<sycl::info::device::max_compute_units>();
     max_work_group_size_ = std::min(size / max_compute_units, q.get_device().get_info<sycl::info::device::max_work_group_size>());
 }
