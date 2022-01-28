@@ -91,11 +91,11 @@ static inline auto update_lennard_jones_field_dispatch_impl(                    
         const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
 
-    if (config.n_symetries == 1) {
+    if (config.n_symetries_ == 1) {
         return update_lennard_jones_field_impl_sycl<T, 1>(q, size, configs.max_work_groups_lennard_1, coordinates, forces, energies, config, in_evt);
-    } else if (config.n_symetries == 27) {
+    } else if (config.n_symetries_ == 27) {
         return update_lennard_jones_field_impl_sycl<T, 27>(q, size, configs.max_work_groups_lennard_27, coordinates, forces, energies, config, in_evt);
-    } else if (config.n_symetries == 125) {
+    } else if (config.n_symetries_ == 125) {
         return update_lennard_jones_field_impl_sycl<T, 125>(q, size, configs.max_work_groups_lennard_125, coordinates, forces, energies, config, in_evt);
     } else {
         throw std::runtime_error("Unsupported");

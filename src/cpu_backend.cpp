@@ -51,9 +51,9 @@ static inline std::tuple<coordinate<T>, T> update_lennard_jones_field_cpu_impl( 
 }
 
 template<typename T> void cpu_backend<T>::init_lennard_jones_field(const configuration<T>& config) {
-    if (config.n_symetries == 1) {
+    if (config.n_symetries_ == 1) {
         last_lennard_jones_metrics_ = update_lennard_jones_field_cpu_impl<T, 1>(coordinates_, config, forces_);
-    } else if (config.n_symetries == 27) {
+    } else if (config.n_symetries_ == 27) {
         last_lennard_jones_metrics_ = update_lennard_jones_field_cpu_impl<T, 27>(coordinates_, config, forces_);
     } else {
         throw std::runtime_error("Unsupported");
@@ -98,9 +98,9 @@ static inline std::tuple<coordinate<T>, T> velocity_verlet_cpu_impl(   //
 
 
 template<typename T> void cpu_backend<T>::run_velocity_verlet(const configuration<T>& config) {
-    if (config.n_symetries == 1) {
+    if (config.n_symetries_ == 1) {
         last_lennard_jones_metrics_ = velocity_verlet_cpu_impl<T, 1>(coordinates_, forces_, momentums_, config);
-    } else if (config.n_symetries == 27) {
+    } else if (config.n_symetries_ == 27) {
         last_lennard_jones_metrics_ = velocity_verlet_cpu_impl<T, 27>(coordinates_, forces_, momentums_, config);
     } else {
         throw std::runtime_error("Unsupported");

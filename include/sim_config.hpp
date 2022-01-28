@@ -25,7 +25,7 @@ template<typename T> struct configuration {
     static constexpr T epsilon_star_ = static_cast<T>(0.2);   //
     static constexpr bool use_cutoff = true;                  //
     T r_cut_ = static_cast<T>(35);                            // Should be 10 Angstroms
-    int n_symetries = 27;                                     //
+    int n_symetries_ = 27;                                    //
     T L_ = static_cast<T>(35);                                // 30 in the subject
 
     // PDB Out settings
@@ -34,7 +34,7 @@ template<typename T> struct configuration {
 
     [[nodiscard]] std::string config_hash() const {
         return "L="s + std::to_string(L_)                                //
-             + "_sym=" + std::to_string(n_symetries)                     //
+             + "_sym=" + std::to_string(n_symetries_)                    //
              + "_rcut=" + std::to_string(r_cut_)                         //
              + "_usecut=" + std::to_string(use_cutoff)                   //
              + "_dt=" + std::to_string(dt)                               //
@@ -57,10 +57,10 @@ template<typename T> struct configuration {
 
 
     friend std::ostream& operator<<(std::ostream& os, configuration config) {
-        os << "Cutoff: " << config.use_cutoff           //
-           << ", r_cut: " << config.r_cut_              //
-           << ", n_symetries: " << config.n_symetries   //
-           << ", box_width: " << config.L_              //
+        os << "Cutoff: " << config.use_cutoff             //
+           << ", r_cut: " << config.r_cut_                //
+           << ", n_symetries_: " << config.n_symetries_   //
+           << ", box_width: " << config.L_                //
            << ", type: " << type_to_string();
         return os;
     }

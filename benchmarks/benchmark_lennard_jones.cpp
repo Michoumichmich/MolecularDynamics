@@ -29,7 +29,7 @@ template<typename T> void cpu_backend_benchmark_impl(benchmark::State& state) {
         auto duration = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()) / 1e9;
         state.SetIterationTime(duration);
     }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries));
+    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries_));
 }
 
 template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
@@ -51,7 +51,7 @@ template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
         state.SetIterationTime(static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()) / 1e9);
     }
 
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries));
+    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries_));
 }
 
 #ifdef BUILD_FLOAT
