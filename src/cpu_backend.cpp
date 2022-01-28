@@ -28,32 +28,32 @@ static inline std::tuple<coordinate<T>, T> update_lennard_jones_field_cpu_impl( 
 #pragma unroll
             for (const auto& sym: get_symetries<n_sym>()) {
                 if (i == j && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) continue;
-                const coordinate<T> delta{sym.x() * config.L_, sym.y() * config.L_, sym.z() * config.L_};
+                const coordinate<T> delta{sym.x() * config.L, sym.y() * config.L, sym.z() * config.L};
                 const auto other_particule = delta + coordinates[j];
                 T squared_distance = compute_squared_distance(this_particule, other_particule);
-                if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut_)) continue;
+                if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut)) continue;
 
                 internal::assume(squared_distance != T{});
                 //if (squared_distance == T{}) { throw std::runtime_error("Got null distance"); }
 
-                const T frac_pow_2 = config.r_star_ * config.r_star_ / squared_distance;
+                const T frac_pow_2 = config.r_star * config.r_star / squared_distance;
                 const T frac_pow_6 = integral_power<3>(frac_pow_2);
                 this_particule_energy += integral_power<2>(frac_pow_6) - 2 * frac_pow_6;
                 const T force_prefactor = (frac_pow_6 - 1.) * frac_pow_6 * frac_pow_2;
                 forces[i] += (this_particule - other_particule) * force_prefactor;
             }
         }
-        energy += 2 * config.epsilon_star_ * this_particule_energy;   //We divided because the energies would be counted twice otherwise
-        summed_forces += forces[i] * (-48) * config.epsilon_star_;
+        energy += 2 * config.epsilon_star * this_particule_energy;   //We divided because the energies would be counted twice otherwise
+        summed_forces += forces[i] * (-48) * config.epsilon_star;
     }
     //std::cout << "Energy: " << energy << std::endl;
     return std::tuple(summed_forces, energy);
 }
 
 template<typename T> void cpu_backend<T>::init_lennard_jones_field(const configuration<T>& config) {
-    if (config.n_symetries_ == 1) {
+    if (config.n_symetries == 1) {
         last_lennard_jones_metrics_ = update_lennard_jones_field_cpu_impl<T, 1>(coordinates_, config, forces_);
-    } else if (config.n_symetries_ == 27) {
+    } else if (config.n_symetries == 27) {
         last_lennard_jones_metrics_ = update_lennard_jones_field_cpu_impl<T, 27>(coordinates_, config, forces_);
     } else {
         throw std::runtime_error("Unsupported");
@@ -98,9 +98,9 @@ static inline std::tuple<coordinate<T>, T> velocity_verlet_cpu_impl(   //
 
 
 template<typename T> void cpu_backend<T>::run_velocity_verlet(const configuration<T>& config) {
-    if (config.n_symetries_ == 1) {
+    if (config.n_symetries == 1) {
         last_lennard_jones_metrics_ = velocity_verlet_cpu_impl<T, 1>(coordinates_, forces_, momentums_, config);
-    } else if (config.n_symetries_ == 27) {
+    } else if (config.n_symetries == 27) {
         last_lennard_jones_metrics_ = velocity_verlet_cpu_impl<T, 27>(coordinates_, forces_, momentums_, config);
     } else {
         throw std::runtime_error("Unsupported");

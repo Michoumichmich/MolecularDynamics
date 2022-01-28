@@ -30,10 +30,10 @@ int main(int argc, char** argv) {
     run_example(1'000, coordinates_double, {.dt = 16, .iter_per_frame = 1});
 
     /* One that runs fast */
-    run_example(100'000, coordinates_double, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries_ = 1});
+    run_example(100'000, coordinates_double, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries = 1});
 
     /* One that is very precise */
-    run_example(100'000, coordinates_double, {.dt = 0.1, .r_cut_ = 75, .n_symetries_ = 125, .L_ = 75});
+    run_example(100'000, coordinates_double, {.dt = 0.1, .r_cut = 70, .n_symetries = 125, .L = 35, .iter_per_frame = 100});   // Best results
 
 #endif
 
@@ -42,8 +42,8 @@ int main(int argc, char** argv) {
     run_example(100'000, coordinates_float);
     run_example(100'000, coordinates_float, {.dt = 0.1, .use_berdensten_thermostate = false});
     run_example(1'000, coordinates_float, {.dt = 16, .iter_per_frame = 1});
-    run_example(10'000'000, coordinates_float, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries_ = 1, .iter_per_frame = 10'000});
-    run_example(100'000, coordinates_float, {.dt = 0.1, .r_cut_ = 75, .n_symetries_ = 125, .L_ = 75});
+    run_example(10'000'000, coordinates_float, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries = 1, .iter_per_frame = 10'000});
+    run_example(100'000, coordinates_float, {.dt = 0.1, .r_cut = 70, .n_symetries = 125, .L = 35, .iter_per_frame = 100});
 #endif
 
 #ifdef BUILD_HALF
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
     run_example(100'000, coordinates_half);
     run_example(100'000, coordinates_half, {.dt = 0.1, .use_berdensten_thermostate = false});
     run_example(100'000, coordinates_half, {.dt = 16, .iter_per_frame = 1});
-    run_example(1'000, coordinates_half, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries_ = 1});
-    run_example(100'000, coordinates_half, {.dt = 1, .r_cut_ = 75, .n_symetries_ = 125, .L_ = 75});
+    run_example(1'000, coordinates_half, {.dt = 1, .use_berdensten_thermostate = false, .n_symetries = 1});
+    run_example(100'000, coordinates_half, {.dt = 0.1, .r_cut = 70, .n_symetries = 125, .L = 35, .iter_per_frame = 100});
 #endif
 }

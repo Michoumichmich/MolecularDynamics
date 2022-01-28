@@ -18,7 +18,7 @@ template<typename T> void cpu_backend_benchmark_impl(benchmark::State& state) {
             .out_file = "",
     };
     const auto size = static_cast<size_t>(state.range(0));
-    const auto coordinates = generate_particules<T>(size, 10 * config.r_star_);
+    const auto coordinates = generate_particules<T>(size, 10 * config.r_star);
     auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
     simulation.run_iter();
 
@@ -29,7 +29,7 @@ template<typename T> void cpu_backend_benchmark_impl(benchmark::State& state) {
         auto duration = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()) / 1e9;
         state.SetIterationTime(duration);
     }
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries_));
+    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries));
 }
 
 template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
@@ -39,7 +39,7 @@ template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
             .out_file = "",
     };
     const auto size = static_cast<size_t>(state.range(0));
-    const auto coordinates = generate_particules<T>(size, 10 * config.r_star_);
+    const auto coordinates = generate_particules<T>(size, 10 * config.r_star);
 
     auto simulation = sim::molecular_dynamics<T, sim::sycl_backend>(coordinates, config, sim::sycl_backend<T>{coordinates.size()});
     simulation.run_iter();
@@ -51,7 +51,7 @@ template<typename T> void sycl_backend_benchmark_impl(benchmark::State& state) {
         state.SetIterationTime(static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count()) / 1e9);
     }
 
-    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries_));
+    state.SetItemsProcessed(static_cast<int64_t>(state.iterations() * size * size * config.n_symetries));
 }
 
 #ifdef BUILD_FLOAT

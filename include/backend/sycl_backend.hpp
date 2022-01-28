@@ -47,7 +47,7 @@ private:
 
 public:
     struct kernel_configs {
-        size_t max_work_group_size_;          //
+        size_t max_work_group_size;           //
         size_t max_work_groups_lennard_1;     //
         size_t max_work_groups_lennard_27;    //
         size_t max_work_groups_lennard_125;   //
@@ -55,7 +55,7 @@ public:
     };
 
 private:
-    kernel_configs configs;
+    kernel_configs configs_;
 };
 
 
