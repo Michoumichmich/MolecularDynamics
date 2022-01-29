@@ -10,16 +10,17 @@ if (NOT CMAKE_BUILD_TYPE)
 endif (NOT CMAKE_BUILD_TYPE)
 
 set(WARNINGS "-Wall -Wextra -Wno-assume -Wno-unused-command-line-argument -Wno-tautological-constant-compare -Wno-unknown-warning-option -Wno-linker-warnings")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS} -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native -s ${WARNINGS} -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -fPIE ${WARNINGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "-dead_strip")
 
 if (APPLE)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Xpreprocessor -fopenmp -I/usr/local/include -L/usr/local/lib -lomp")
 else ()
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp -s")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp")
 endif ()
 
+#Flags for DPC++. For hipSYCL use -DHIPSYCL_TARGETS=omp;cuda:sm_xx;...
 if (SYCL STREQUAL CUDA)
     set(DPCPP_FLAGS -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_75 -Wno-unknown-cuda-version -Xcuda-ptxas -v -fgpu-inline-threshold=10000)
 elseif (SYCL STREQUAL HIP)
@@ -28,6 +29,7 @@ elseif (SYCL STREQUAL CPU)
     set(DPCPP_FLAGS -fsycl-targets=spir64_x86_64)
 endif ()
 
+#In all the cases we need SYCl for the vector class used in the OMP backend...
 include(cmake/FindSYCL.cmake)
 
 option(BUILD_DOUBLE "Build with double backend" ON)
@@ -50,15 +52,18 @@ include_directories(include)
 add_executable(main main.cpp)
 add_sycl_to_target(TARGET main SOURCES main.cpp)
 
-# CPU BE
-add_library(md_sycl SHARED src/molecular_dynamics_sycl.cpp)
-add_sycl_to_target(TARGET md_sycl SOURCES src/molecular_dynamics_sycl.cpp)
-target_link_libraries(main PRIVATE md_sycl)
-
+# OMP BE
 add_library(md_cpu SHARED src/molecular_dynamics_cpu.cpp)
 add_sycl_to_target(TARGET md_cpu SOURCES src/molecular_dynamics_cpu.cpp)
 target_link_libraries(main PRIVATE md_cpu)
 
+# SYCL BE
+if (SYCL)
+    add_definitions(-DBUILD_SYCL)
+    add_library(md_sycl SHARED src/molecular_dynamics_sycl.cpp)
+    add_sycl_to_target(TARGET md_sycl SOURCES src/molecular_dynamics_sycl.cpp)
+    target_link_libraries(main PRIVATE md_sycl)
+endif ()
 
 include(FetchContent)
 

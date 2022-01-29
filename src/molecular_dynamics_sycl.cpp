@@ -1,3 +1,8 @@
+#ifndef BUILD_SYCL
+#    error "Pass -DSYCL=ON to cmake in order to enable the SYCL backend"
+#endif
+
+
 #include <backend/sycl/sycl_backend.hpp>
 #include <molecular_dynamics/molecular_dynamics.hpp>
 
