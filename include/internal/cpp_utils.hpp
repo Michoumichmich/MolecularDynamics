@@ -13,16 +13,6 @@
 #else
 #    include <sycl/sycl.hpp>
 #endif
-//
-//#if defined(__has_include)
-//#    if __has_include(<span>)
-//#        include <span>
-//#    else
-//#        include "fallback_span.hpp"
-//#    endif
-//#else
-//#    include <span>
-//#endif
 
 
 namespace sim::internal {
