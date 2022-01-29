@@ -1,6 +1,5 @@
 #pragma once
-
-#include "backend/backend_interface.h"
+#include <backend/backend_interface.h>
 
 namespace sim {
 template<typename T> class cpu_backend : backend_interface<T> {

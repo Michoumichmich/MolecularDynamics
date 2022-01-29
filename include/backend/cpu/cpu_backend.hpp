@@ -1,3 +1,4 @@
+#pragma once
 #include "cpu_backend.h"
 
 namespace sim {

@@ -1,5 +1,5 @@
 #pragma once
-#include "backend/sycl/sycl_backend.h"
+#include "sycl_backend.h"
 #include <utility>
 
 namespace sim {

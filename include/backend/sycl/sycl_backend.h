@@ -1,6 +1,6 @@
 #pragma once
-#include "backend/backend_interface.h"
-#include "internal/sycl_usm_smart_ptr.hpp"
+#include <backend/backend_interface.h>
+#include <internal/sycl_usm_smart_ptr.hpp>
 #include <utility>
 
 namespace sim {
