@@ -1,6 +1,6 @@
 #pragma once
-#include <backend/backend_interface.h>
-#include <internal/sycl_usm_smart_ptr.hpp>
+#include "backend/backend_interface.h"
+#include "internal/sycl_usm_smart_ptr.hpp"
 #include <utility>
 
 namespace sim {
@@ -58,16 +58,4 @@ private:
     kernel_configs configs_;
 };
 
-
-#ifdef BUILD_HALF
-extern template class sycl_backend<sycl::half>;
-#endif
-
-#ifdef BUILD_FLOAT
-extern template class sycl_backend<float>;
-#endif
-
-#ifdef BUILD_DOUBLE
-extern template class sycl_backend<double>;
-#endif
 }   // namespace sim

@@ -1,4 +1,4 @@
-#include <backend/cpu_backend.hpp>
+#include "cpu_backend.h"
 
 namespace sim {
 /**
@@ -117,18 +117,32 @@ template<typename T> void cpu_backend<T>::randinit_momentums(T min, T max) {
         return coordinate<T>(internal::generate_random_value<T>(min, max), internal::generate_random_value<T>(min, max), internal::generate_random_value<T>(min, max));
     });
 }
+template<typename T> void cpu_backend<T>::store_particules_coordinates(pdb_writer& writer, size_t i) const { writer.store_new_iter(coordinates_, i); }
+template<typename T> T cpu_backend<T>::get_momentums_squared_norm() const {
+    T sum{};
+    for (const auto& momentum: momentums_) { sum += sycl::dot(momentum, momentum); }
+    return sum;
+}
+template<typename T> void cpu_backend<T>::apply_multiplicative_correction_to_momentums(T coeff) {
+    for (auto& momentum: momentums_) { momentum *= coeff; }
+}
+template<typename T> void cpu_backend<T>::center_kinetic_momentums() {
+    auto mean = mean_kinetic_momentums();
+    for (auto& momentum: momentums_) { momentum -= mean; }
+}
+template<typename T> coordinate<T> cpu_backend<T>::mean_kinetic_momentums() const {
+    coordinate<T> mean{};   // Sum of vi * mi;
+    for (const auto& momentum: momentums_) { mean += momentum; }
+    return mean / momentums_.size();
+}
 
 
-#ifdef BUILD_HALF
-template class cpu_backend<sycl::half>;
-#endif
+template<typename T> void cpu_backend<T>::init_backend(const std::vector<coordinate<T>>& particules) {
+    size_ = particules.size();
+    coordinates_ = particules;
+    momentums_ = std::vector<coordinate<T>>(size_);
+    forces_ = std::vector<coordinate<T>>(size_);
+}
 
-#ifdef BUILD_FLOAT
-template class cpu_backend<float>;
-#endif
-
-#ifdef BUILD_DOUBLE
-template class cpu_backend<double>;
-#endif
 
 }   // namespace sim

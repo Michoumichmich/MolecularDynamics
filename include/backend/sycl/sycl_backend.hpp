@@ -1,4 +1,5 @@
-#include <backend/sycl_backend.hpp>
+#pragma once
+#include "backend/sycl/sycl_backend.h"
 #include <utility>
 
 namespace sim {
@@ -36,7 +37,7 @@ static inline auto compute_range_size(size_t size, size_t work_group_size) {
     return sycl::nd_range<1>(work_group_size * ((size + work_group_size - 1) / work_group_size), work_group_size);
 }
 
-#include "sycl_backend_reductions.hpp"
+#include "sycl_backend_impl_reductions.hpp"
 
 
 template<typename T, int n_sym> struct lennard_jones_kernel;
