@@ -10,8 +10,9 @@ if (NOT CMAKE_BUILD_TYPE)
 endif (NOT CMAKE_BUILD_TYPE)
 
 set(WARNINGS "-Wall -Wextra -Wno-assume -Wno-unused-command-line-argument -Wno-tautological-constant-compare -Wno-unknown-warning-option -Wno-linker-warnings")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native ${WARNINGS} -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native -s ${WARNINGS} -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -fPIE ${WARNINGS}")
+set(CMAKE_SHARED_LINKER_FLAGS "-dead_strip")
 
 if (APPLE)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Xpreprocessor -fopenmp -I/usr/local/include -L/usr/local/lib -lomp")
