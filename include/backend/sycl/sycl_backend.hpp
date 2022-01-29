@@ -5,19 +5,57 @@
 namespace sim {
 
 
-template<typename KernelName> static inline size_t max_work_groups_for_kernel(sycl::queue& q) {
-    size_t max_items = std::max<size_t>(1U, std::min<size_t>(4096U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
+//template<typename KernelName> static inline size_t max_work_groups_for_kernel(sycl::queue& q) {
+//    size_t max_items = std::max<size_t>(1U, std::min<size_t>(4096U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
+//#if defined(SYCL_IMPLEMENTATION_INTEL) || defined(SYCL_IMPLEMENTATION_ONEAPI)
+//    try {
+//        sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
+//        auto kernel = sycl::get_kernel_bundle<sycl::bundle_state::executable>(q.get_context()).get_kernel(id);
+//        //size_t register_count = kernel.get_info<sycl::info::kernel_device_specific::ext_codeplay_num_regs>(q.get_device());
+//        max_items = std::min(max_items, kernel.get_info<sycl::info::kernel_device_specific::work_group_size>(q.get_device()));
+//    } catch (std::exception& e) {
+//        std::cout << "Couldn't read kernel properties for device: " << q.get_device().get_info<sycl::info::device::name>() << " got exception: " << e.what() << std::endl;
+//    }
+//#endif
+//    return max_items;
+//}
+//
+
+template<typename KernelName> static inline std::pair<size_t, size_t> query_kernel_group_sizes(const sycl::queue& q) {
+    size_t max_items = std::max(1U, std::min(4096U, static_cast<uint32_t>(q.get_device().get_info<sycl::info::device::max_work_group_size>())));
+    auto preferred = q.get_device().get_info<sycl::info::device::sub_group_sizes>();
+    auto preferred_multiple = std::min(32UL, *std::max_element(preferred.begin(), preferred.end()));
+    std::cout << "Preferred multiple " << std::endl;
 #if defined(SYCL_IMPLEMENTATION_INTEL) || defined(SYCL_IMPLEMENTATION_ONEAPI)
     try {
         sycl::kernel_id id = sycl::get_kernel_id<KernelName>();
         auto kernel = sycl::get_kernel_bundle<sycl::bundle_state::executable>(q.get_context()).get_kernel(id);
         //size_t register_count = kernel.get_info<sycl::info::kernel_device_specific::ext_codeplay_num_regs>(q.get_device());
         max_items = std::min(max_items, kernel.get_info<sycl::info::kernel_device_specific::work_group_size>(q.get_device()));
+        preferred_multiple = std::min(preferred_multiple, kernel.get_info<sycl::info::kernel_device_specific::preferred_work_group_size_multiple>(q.get_device()));
+        return {max_items, preferred_multiple};
     } catch (std::exception& e) {
         std::cout << "Couldn't read kernel properties for device: " << q.get_device().get_info<sycl::info::device::name>() << " got exception: " << e.what() << std::endl;
     }
 #endif
-    return max_items;
+    return {max_items, max_items};
+}
+
+template<typename kernel> static inline size_t restrict_work_group_size(size_t size, const sycl::queue& q) noexcept {
+    const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
+    auto [max_group_size, preferred_multiple] = query_kernel_group_sizes<kernel>(q);
+    auto rqd_work_per_cu = (size + max_compute_units - 1) / max_compute_units;
+    while (rqd_work_per_cu > max_group_size) { rqd_work_per_cu /= 2; }
+    auto per_work_item = preferred_multiple * ((rqd_work_per_cu + preferred_multiple + 1) / preferred_multiple);
+    return per_work_item;
+}
+
+static inline size_t restrict_work_group_size(size_t size, const sycl::queue& q) noexcept {
+    const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
+    const auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
+    auto rqd_work_per_cu = (size + max_compute_units - 1) / max_compute_units;
+    while (rqd_work_per_cu > max_work_group_size) { rqd_work_per_cu /= 2; }
+    return rqd_work_per_cu;
 }
 
 
@@ -181,20 +219,23 @@ template<typename T>
 sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue, bool maximise_occupancy)
     : q(queue), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), particule_energy_(size, q), tmp_buf_(size) {
 
-    const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
-    const auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
+    configs_.max_work_group_size = restrict_work_group_size(size, q);
+    configs_.max_work_groups_lennard_1 = restrict_work_group_size<lennard_jones_kernel<T, 1>>(size, q);
+    configs_.max_work_groups_lennard_27 = restrict_work_group_size<lennard_jones_kernel<T, 27>>(size, q);
+    configs_.max_work_groups_lennard_125 = restrict_work_group_size<lennard_jones_kernel<T, 125>>(size, q);
 
-    if (maximise_occupancy && size_ < max_compute_units * max_work_group_size) {
-        configs_.max_work_group_size = std::min(max_work_group_size, std::max(1UL, (size + max_compute_units - 1) / max_compute_units));
-    } else {
-        configs_.max_work_group_size = max_work_group_size;
-    }
+    //    const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
+    //    const auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
+    //    if (maximise_occupancy && size_ < max_compute_units * max_work_group_size) {
+    //        configs_.max_work_group_size = std::min(max_work_group_size, std::max(1UL, (size + max_compute_units - 1) / max_compute_units));
+    //    } else {
+    //        configs_.max_work_group_size = max_work_group_size;
+    //    }
+    //    configs_.max_work_groups_lennard_1 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 1>>(q));
+    //    configs_.max_work_groups_lennard_27 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 27>>(q));
+    //    configs_.max_work_groups_lennard_125 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 125>>(q));
+    //    configs_.max_reduction_size = configs_.max_work_group_size;
 
-    configs_.max_work_groups_lennard_1 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 1>>(q));
-    configs_.max_work_groups_lennard_27 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 27>>(q));
-    configs_.max_work_groups_lennard_125 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 125>>(q));
-
-    configs_.max_reduction_size = configs_.max_work_group_size;
 #ifdef SYCL_IMPLEMENTATION_ONEAPI
     if (q.get_device().is_cpu()) {
         configs_.max_reduction_size = std::min(64UL, configs_.max_reduction_size);
