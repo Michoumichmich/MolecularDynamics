@@ -58,4 +58,17 @@ private:
     kernel_configs configs_;
 };
 
+#ifdef BUILD_DOUBLE
+extern template class sycl_backend<double>;
+#endif
+
+#ifdef BUILD_FLOAT
+extern template class sycl_backend<float>;
+#endif
+
+#ifdef BUILD_HALF
+extern template class sycl_backend<sycl::half>;
+#endif
+
+
 }   // namespace sim

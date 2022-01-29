@@ -91,12 +91,29 @@ template<typename T, template<typename> class backend> void molecular_dynamics<T
 }
 
 
+#ifdef BUILD_DOUBLE
 template class molecular_dynamics<double, sycl_backend>;
+#endif
+
+#ifdef BUILD_FLOAT
 template class molecular_dynamics<float, sycl_backend>;
-//template class molecular_dynamics<sycl::half, sycl_backend>;
+#endif
+
+#ifdef BUILD_HALF
+template class molecular_dynamics<sycl::half, sycl_backend>;
+#endif
+
+#ifdef BUILD_DOUBLE
 template class molecular_dynamics<double, cpu_backend>;
+#endif
+
+#ifdef BUILD_FLOAT
 template class molecular_dynamics<float, cpu_backend>;
-//template class molecular_dynamics<sycl::half, cpu_backend>;
+#endif
+
+#ifdef BUILD_HALF
+template class molecular_dynamics<sycl::half, cpu_backend>;
+#endif
 
 
 }   // namespace sim

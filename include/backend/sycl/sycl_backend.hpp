@@ -207,17 +207,16 @@ sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue, bool maximise_occu
 template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::get_last_lennard_jones_metrics() const { return {compute_error_lennard_jones(), reduce_energies()}; }
 
 
-#ifdef BUILD_HALF
-template class sycl_backend<sycl::half>;
+#ifdef BUILD_DOUBLE
+template class sycl_backend<double>;
 #endif
 
 #ifdef BUILD_FLOAT
 template class sycl_backend<float>;
 #endif
 
-#ifdef BUILD_DOUBLE
-template class sycl_backend<double>;
+#ifdef BUILD_HALF
+template class sycl_backend<sycl::half>;
 #endif
-
 
 }   // namespace sim

@@ -89,11 +89,24 @@ public:
 };
 
 
-extern template class molecular_dynamics<double, sycl_backend>;
+#ifdef BUILD_FLOAT
 extern template class molecular_dynamics<float, sycl_backend>;
-//extern template class molecular_dynamics<sycl::half, sycl_backend>;
+#endif
+
+#ifdef BUILD_HALF
+extern template class molecular_dynamics<sycl::half, sycl_backend>;
+#endif
+
+#ifdef BUILD_DOUBLE
 extern template class molecular_dynamics<double, cpu_backend>;
+#endif
+
+#ifdef BUILD_FLOAT
 extern template class molecular_dynamics<float, cpu_backend>;
-//extern template class molecular_dynamics<sycl::half, cpu_backend>;
+#endif
+
+#ifdef BUILD_HALF
+extern template class molecular_dynamics<sycl::half, cpu_backend>;
+#endif
 
 }   // namespace sim

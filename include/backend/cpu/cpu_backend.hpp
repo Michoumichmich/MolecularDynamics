@@ -144,5 +144,16 @@ template<typename T> void cpu_backend<T>::init_backend(const std::vector<coordin
     forces_ = std::vector<coordinate<T>>(size_);
 }
 
+#ifdef BUILD_DOUBLE
+template class cpu_backend<double>;
+#endif
+
+#ifdef BUILD_FLOAT
+template class cpu_backend<float>;
+#endif
+
+#ifdef BUILD_HALF
+template class cpu_backend<sycl::half>;
+#endif
 
 }   // namespace sim
