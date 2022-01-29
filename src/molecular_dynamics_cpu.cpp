@@ -1,5 +1,5 @@
 #include <backend/cpu/cpu_backend.hpp>
-#include <molecular_dynamics.hpp>
+#include <molecular_dynamics/molecular_dynamics.hpp>
 
 
 #ifdef BUILD_DOUBLE

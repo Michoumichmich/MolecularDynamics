@@ -1,9 +1,6 @@
 #pragma once
 
-#include "backend/backend_interface.h"
-#include "backend/cpu/cpu_backend.h"
-#include "backend/sycl/sycl_backend.h"
-
+#include <backend/backend_interface.h>
 #include <iomanip>
 
 namespace sim {
