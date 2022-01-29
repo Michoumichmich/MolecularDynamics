@@ -1,4 +1,5 @@
-#include <backend/sycl_backend.hpp>
+#pragma once
+#include "sycl_backend.h"
 #include <utility>
 
 namespace sim {
@@ -36,7 +37,7 @@ static inline auto compute_range_size(size_t size, size_t work_group_size) {
     return sycl::nd_range<1>(work_group_size * ((size + work_group_size - 1) / work_group_size), work_group_size);
 }
 
-#include "sycl_backend_reductions.hpp"
+#include "sycl_backend_impl_reductions.hpp"
 
 
 template<typename T, int n_sym> struct lennard_jones_kernel;
@@ -177,8 +178,8 @@ template<typename T> void sycl_backend<T>::run_velocity_verlet(const configurati
 }
 
 template<typename T>
-sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue, bool maximise_occupancy)
-    : q(std::move(queue)), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), particule_energy_(size, q), tmp_buf_(size) {
+sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue, bool maximise_occupancy)
+    : q(queue), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), particule_energy_(size, q), tmp_buf_(size) {
 
     const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
     const auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
@@ -203,20 +204,8 @@ sycl_backend<T>::sycl_backend(size_t size, sycl::queue queue, bool maximise_occu
 #endif
 }
 
+template<typename T> void sycl_backend<T>::init_backend(const std::vector<coordinate<T>>& particules) { q.copy(particules.data(), coordinates_.get(), size_).wait(); }
+
 template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::get_last_lennard_jones_metrics() const { return {compute_error_lennard_jones(), reduce_energies()}; }
-
-
-#ifdef BUILD_HALF
-template class sycl_backend<sycl::half>;
-#endif
-
-#ifdef BUILD_FLOAT
-template class sycl_backend<float>;
-#endif
-
-#ifdef BUILD_DOUBLE
-template class sycl_backend<double>;
-#endif
-
 
 }   // namespace sim

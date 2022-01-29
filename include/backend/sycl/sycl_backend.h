@@ -8,9 +8,9 @@ namespace sim {
 template<typename T> class sycl_backend : backend_interface<T> {
 
 public:
-    explicit sycl_backend(size_t size, sycl::queue queue = sycl::queue{}, bool maximise_occupancy = true);
+    explicit sycl_backend(size_t size, const sycl::queue& queue = sycl::queue{}, bool maximise_occupancy = true);
 
-    inline void init_backend(const std::vector<coordinate<T>>& particules) override { q.copy(particules.data(), coordinates_.get(), size_).wait(); }
+    void init_backend(const std::vector<coordinate<T>>& particules) override;
 
     [[nodiscard]] inline size_t get_particules_count() const override { return size_; }
 
@@ -59,15 +59,4 @@ private:
 };
 
 
-#ifdef BUILD_HALF
-extern template class sycl_backend<sycl::half>;
-#endif
-
-#ifdef BUILD_FLOAT
-extern template class sycl_backend<float>;
-#endif
-
-#ifdef BUILD_DOUBLE
-extern template class sycl_backend<double>;
-#endif
 }   // namespace sim

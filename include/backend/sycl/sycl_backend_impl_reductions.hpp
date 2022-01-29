@@ -1,5 +1,5 @@
 #pragma once
-#include <backend/sycl_backend.hpp>
+#include "backend/sycl/sycl_backend.h"
 
 
 template<typename T> coordinate<T> sycl_backend<T>::mean_kinetic_momentums() const {

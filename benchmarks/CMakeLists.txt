@@ -1,5 +1,5 @@
 add_executable(benchmark_lennard_jones benchmarks/benchmark_lennard_jones.cpp)
 add_sycl_to_target(TARGET benchmark_lennard_jones SOURCES benchmarks/benchmark_lennard_jones.cpp)
 target_link_libraries(benchmark_lennard_jones PRIVATE benchmark::benchmark)
-target_link_libraries(benchmark_lennard_jones PRIVATE cpu_backend)
-target_link_libraries(benchmark_lennard_jones PRIVATE sycl_backend)
+target_link_libraries(benchmark_lennard_jones PRIVATE md_cpu)
+target_link_libraries(benchmark_lennard_jones PRIVATE md_sycl)

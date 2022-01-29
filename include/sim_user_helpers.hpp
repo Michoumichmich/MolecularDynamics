@@ -1,9 +1,8 @@
 #pragma once
 
+#include <fstream>
 #include <internal/cpp_utils.hpp>
 #include <internal/sim_math.hpp>
-
-#include <fstream>
 
 namespace sim {
 /**
