@@ -4,7 +4,7 @@
 
 ```
 mkdir -p build ; cd build
-CXX=clang++ cmake .. -DCMAKE_BUILD_TYPE=Release -DSYCL=ON
+CXX={clang++|dpcpp} cmake .. -DSYCL={CPU|HIP|CUDA}
 make main
 ./main ../particule.xyz
 ```
