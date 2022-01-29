@@ -1,13 +1,24 @@
 #include <sim>
 
+bool use_sycl = false;
+
 template<typename T> void run_example(size_t n, const std::vector<sim::coordinate<T>>& coordinates, sim::configuration<T> config = {}) {
     std::cout << config << std::endl;
     constexpr int print_periodicity = 10;
-    //auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
-    auto simulation = sim::molecular_dynamics<T, sim::sycl_backend>(coordinates, config, sim::sycl_backend<T>{coordinates.size()});
-    for (size_t i = 0; i < n; ++i) {
-        if (i % print_periodicity == 0) std::cout << simulation << std::endl;
-        simulation.run_iter();
+    if (use_sycl) {
+        std::cout << "Running on SYCL with " << sycl::device{}.get_info<sycl::info::device::name>() << std::endl;
+        auto simulation = sim::molecular_dynamics<T, sim::sycl_backend>(coordinates, config, sim::sycl_backend<T>{coordinates.size()});
+        for (size_t i = 0; i < n; ++i) {
+            if (i % print_periodicity == 0) std::cout << simulation << std::endl;
+            simulation.run_iter();
+        }
+    } else {
+        std::cout << "Running on openMP." << std::endl;
+        auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
+        for (size_t i = 0; i < n; ++i) {
+            if (i % print_periodicity == 0) std::cout << simulation << std::endl;
+            simulation.run_iter();
+        }
     }
 }
 
@@ -16,6 +27,9 @@ int main(int argc, char** argv) {
         std::cerr << "Usage: ./" << argv[0] << "particle_file.xyz" << std::endl;
         return 1;
     }
+
+    if (argc >= 2 && std::string(argv[2]) == "sycl") { use_sycl = true; }
+
     const auto coordinates_double = sim::parse_particule_file(argv[1]);
 
 
