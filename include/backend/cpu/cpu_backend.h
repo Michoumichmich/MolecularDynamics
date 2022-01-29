@@ -40,17 +40,5 @@ private:
     std::vector<coordinate<T>> forces_{};        // Lennard Jones Field
 };
 
-#ifdef BUILD_DOUBLE
-extern template class cpu_backend<double>;
-#endif
-
-#ifdef BUILD_FLOAT
-extern template class cpu_backend<float>;
-#endif
-
-#ifdef BUILD_HALF
-extern template class cpu_backend<sycl::half>;
-#endif
-
 
 }   // namespace sim

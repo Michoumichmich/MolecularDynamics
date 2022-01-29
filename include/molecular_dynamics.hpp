@@ -1,11 +1,8 @@
+#pragma once
+
 #include <molecular_dynamics.h>
 
-#include <backend/cpu/cpu_backend.hpp>
-#include <backend/sycl/sycl_backend.hpp>
-
 namespace sim {
-
-
 template<typename T, template<typename> class backend>
 molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<T>>& particules, configuration<T> config, backend<T>&& be)
     : configuration_(config),     //
@@ -89,31 +86,4 @@ template<typename T, template<typename> class backend> void molecular_dynamics<T
     total_energy_ = kinetic_energy_ + lennard_jones_energy_;
     avg_delta_energy_ = ((total_energy_ - prev_energy) * aging_coeff + avg_delta_energy_) / (1 + aging_coeff);
 }
-
-
-#ifdef BUILD_DOUBLE
-template class molecular_dynamics<double, sycl_backend>;
-#endif
-
-#ifdef BUILD_FLOAT
-template class molecular_dynamics<float, sycl_backend>;
-#endif
-
-#ifdef BUILD_HALF
-template class molecular_dynamics<sycl::half, sycl_backend>;
-#endif
-
-#ifdef BUILD_DOUBLE
-template class molecular_dynamics<double, cpu_backend>;
-#endif
-
-#ifdef BUILD_FLOAT
-template class molecular_dynamics<float, cpu_backend>;
-#endif
-
-#ifdef BUILD_HALF
-template class molecular_dynamics<sycl::half, cpu_backend>;
-#endif
-
-
 }   // namespace sim

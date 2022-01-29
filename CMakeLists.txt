@@ -50,9 +50,13 @@ add_executable(main main.cpp)
 add_sycl_to_target(TARGET main SOURCES main.cpp)
 
 # CPU BE
-add_library(md SHARED src/molecular_dynamics.cpp)
-add_sycl_to_target(TARGET md SOURCES src/molecular_dynamics.cpp)
-target_link_libraries(main PRIVATE md)
+add_library(md_sycl SHARED src/molecular_dynamics_sycl.cpp)
+add_sycl_to_target(TARGET md_sycl SOURCES src/molecular_dynamics_sycl.cpp)
+target_link_libraries(main PRIVATE md_sycl)
+
+add_library(md_cpu SHARED src/molecular_dynamics_cpu.cpp)
+add_sycl_to_target(TARGET md_cpu SOURCES src/molecular_dynamics_cpu.cpp)
+target_link_libraries(main PRIVATE md_cpu)
 
 
 include(FetchContent)
