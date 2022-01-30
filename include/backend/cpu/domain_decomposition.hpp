@@ -1,5 +1,6 @@
 #pragma once
 
+
 template<typename T, bool is_domain_decomposer = true> struct domain_decomposer {
 public:
     static constexpr bool is_domain_decomposer_ = true;
@@ -20,7 +21,7 @@ public:
     }
 
 
-    inline void update_domains(const std::vector<sim::coordinate<T>>& coordinates) const noexcept {
+    inline void update_domains(std::vector<sim::coordinate<T>>& coordinates) const noexcept {
         const auto max_size = max_domain_size(coordinates);
         particles_buffer.clear();
         particles_buffer.reserve(max_size);
@@ -30,40 +31,37 @@ public:
 
         for (index_t i = 0; i < coordinates_size; ++i) {
             auto c = coordinates[i];
-            try {
-                const auto domain_id = linearize(bind_coordinate_to_domain(c));
-                domains[domain_id].push_back(i);
-            } catch (...) {}
+            const auto domain_id = linearize(bind_coordinate_to_domain(c));
+            domains[domain_id].push_back(i);
         }
     }
 
     template<int n_syms, typename func> inline void run_kernel_on_domains(const std::vector<sim::coordinate<T>>& particles, func&& kernel) const noexcept {
         const auto num_domains = static_cast<index_t>(domains.size());
         sim::internal::assume(num_domains == get_domains_count());
-        for (index_t current_domain_id = 0; current_domain_id < num_domains; ++current_domain_id) {
 
+        for (index_t current_domain_id = 0; current_domain_id < num_domains; ++current_domain_id) {
             const auto domain_coordinates = delinearize(current_domain_id);
             index_t n_neighbors = 0;
 
-            std::array<std::pair<index_t, sycl::vec<T, 3>>, n_syms> neighbors{};
+            std::array<std::pair<index_t, sim::coordinate<T>>, n_syms> neighbors{};
             for (const auto& verlet_sym: sim::get_symetries<n_syms>()) {
-                sycl::vec<T, 3> deltas{};
+                sim::coordinate<T> delta{};
                 auto neighbor_domain_coordinates = domain_coordinates + verlet_sym;
+#pragma unroll
                 for (int dim = 0; dim < 3; ++dim) {
                     if (neighbor_domain_coordinates[dim] >= domains_sizes[dim]) {
-                        neighbor_domain_coordinates[dim] = domains_sizes[dim] - verlet_sym[dim];   //   (verlet_sym[dim] - domains_sizes[dim]) % domains_sizes[dim];
-                        deltas[dim] = width_[dim];
-                    }
-
-                    if (neighbor_domain_coordinates[dim] < 0) {
-                        neighbor_domain_coordinates[dim] = verlet_sym[dim] + domains_sizes[dim];
-                        deltas[dim] = -width_[dim];
+                        neighbor_domain_coordinates[dim] -= domains_sizes[dim];
+                        delta[dim] = max_[dim] - min_[dim];
+                    } else if (neighbor_domain_coordinates[dim] < 0) {
+                        neighbor_domain_coordinates[dim] += domains_sizes[dim];
+                        delta[dim] = min_[dim] - max_[dim];
                     }
                 }
                 auto neighbor_linear_id = linearize(neighbor_domain_coordinates);
-                sim::internal::assume(neighbor_linear_id < num_domains);
+                sim::internal::assume(neighbor_linear_id >= 0 && neighbor_linear_id < num_domains);
                 neighbors[n_neighbors].first = neighbor_linear_id;
-                neighbors[n_neighbors].second = deltas;
+                neighbors[n_neighbors].second = delta;
                 ++n_neighbors;
             }
 
@@ -71,7 +69,7 @@ public:
                 const auto current_particle = particles[current_domain_particle_id];
                 for (const auto& neighbor: neighbors) {
                     const auto delta = neighbor.second;
-                    std::fill(particles_buffer.begin(), particles_buffer.end(), sim::coordinate<T>{});
+                    particles_buffer.clear();
                     for (const index_t& other_particle_id: domains[neighbor.first]) {
                         /**
                          * If the two particles are different, its always ok, else we have the same particle id twice, so we must ensure that the
@@ -89,6 +87,8 @@ public:
     }
 
 private:
+    [[nodiscard]] inline constexpr index_t get_domains_count() const { return domains_sizes.x() * domains_sizes.y() * domains_sizes.z(); }
+
     [[nodiscard]] inline constexpr index_t linearize(const sycl::vec<index_t, 3>& domain_ids) const {
         return domain_ids.x() * domains_sizes.y() * domains_sizes.z() + domain_ids.y() * domains_sizes.z() + domain_ids.z();
     }
@@ -99,22 +99,20 @@ private:
         index_t x = (id - z - y * domains_sizes.z()) / (domains_sizes.y() * domains_sizes.z());
         return sycl::vec<index_t, 3>{x, y, z};
     }
-    [[nodiscard]] inline constexpr index_t get_domains_count() const { return domains_sizes.x() * domains_sizes.y() * domains_sizes.z(); }
-    [[nodiscard]] inline sycl::vec<index_t, 3> bind_coordinate_to_domain(sim::coordinate<T> coord) const {
-        if (coord.x() < min_.x() || coord.x() > max_.x() || coord.y() < min_.y() || coord.y() > max_.y() || coord.z() < min_.z() || coord.z() > max_.z()) {
-            throw std::runtime_error("Coordinate does not fall in range");
+
+    [[nodiscard]] inline sycl::vec<index_t, 3> bind_coordinate_to_domain(sim::coordinate<T>& coord) const {
+#pragma unroll
+        for (int dim = 0; dim < 3; ++dim) {
+            if (coord[dim] < min_[dim] || coord[dim] > max_[dim]) { coord[dim] = sim::floar_wrap(coord[dim], min_[dim], max_[dim]); }
         }
 
         const auto tmp = (coord - min_) / width_;
         return sycl::vec<index_t, 3>{std::floor(tmp.x()), std::floor(tmp.y()), std::floor(tmp.z())};
     }
-    [[nodiscard]] inline index_t max_domain_size(const std::vector<sim::coordinate<T>>& coordinates) const noexcept {
+
+    [[nodiscard]] inline index_t max_domain_size(std::vector<sim::coordinate<T>>& coordinates) const noexcept {
         std::vector<index_t> counts(get_domains_count(), 0);
-        for (const auto& c: coordinates) {
-            try {
-                ++counts[linearize(bind_coordinate_to_domain(c))];
-            } catch (...) {}
-        }
+        for (auto& c: coordinates) { ++counts[linearize(bind_coordinate_to_domain(c))]; }
         return *std::max_element(counts.begin(), counts.end());
     }
 

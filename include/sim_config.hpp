@@ -24,12 +24,14 @@ template<typename T> struct configuration {
     static constexpr T epsilon_star = static_cast<T>(0.2);   //
     static constexpr bool use_cutoff = true;                 //
     T r_cut = static_cast<T>(35);                            // Should be 10 Angstroms
-    int n_symetries = 27;                                    //
+    int n_symetries = 27;                                    // Symetries when not domain decomposition else number of neighbor domains.
     T L = static_cast<T>(35);                                // 30 in the subject
 
-    coordinate<T> domain_mins{-15, -15, -15};
-    coordinate<T> domain_maxs{15, 15, 15};
-    coordinate<T> domain_widths{4, 4, 4};
+    // Domain decomposition parameters
+    coordinate<T> domain_mins{-25, -25, -25};
+    coordinate<T> domain_maxs{25, 25, 25};
+    coordinate<T> domain_widths{5, 5, 5};
+    T max_force = 500;
 
     // PDB Out settings
     int iter_per_frame = 100;                                      //

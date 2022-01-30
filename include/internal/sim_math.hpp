@@ -28,9 +28,7 @@ template<int N> static inline constexpr std::array<sycl::vec<int, 3U>, N> get_sy
     }
 }
 
-template<typename T> constexpr static inline T compute_squared_distance(const coordinate<T>& lhs, const coordinate<T>& rhs) {
-    return (lhs[0U] - rhs[0U]) * (lhs[0U] - rhs[0U]) + (lhs[1U] - rhs[1U]) * (lhs[1U] - rhs[1U]) + (lhs[2U] - rhs[2U]) * (lhs[2U] - rhs[2U]);
-}
+template<typename T> constexpr static inline T compute_squared_distance(const coordinate<T>& lhs, const coordinate<T>& rhs) { return sycl::dot(lhs - rhs, lhs - rhs); }
 
 template<int N, typename T> constexpr T integral_power_helper(const T& y, const T& x) {
     if constexpr (N < 0) {
@@ -56,5 +54,9 @@ template<int N, typename T> constexpr T integral_power(const T& v) {
     static_assert(integral_power_helper<3>(1, 5) == 125);
     return integral_power_helper<N>(T(1), v);
 }
+
+template<typename T> static inline T wrapMax(T x, T max) { return std::fmod(max + std::fmod(x, max), max); }
+template<typename T> static inline T floar_wrap(T x, T min, T max) { return min + wrapMax(x - min, max - min); }
+
 
 }   // namespace sim
