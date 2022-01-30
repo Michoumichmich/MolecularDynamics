@@ -83,15 +83,13 @@ static inline std::tuple<coordinate<T>, T> velocity_verlet_cpu_impl(   //
         std::vector<coordinate<T>>& momentums,                         //
         const configuration<T>& config) noexcept {
 
-
     //    auto decomposer = domain_decomposer<T>{coordinate<T>(-10, -10, -10), coordinate<T>(10, 10, 10), coordinate<T>(3, 3, 3)};
-    //    auto domains = decomposer.compute_domains(coordinates);
+    //    decomposer.update_domains(coordinates);
     //    T mean = 0;
     //    int count = 0;
-    //    decomposer.template run_kernel_on_domains(domains, [&](auto id1, auto id2, coordinate<T> delta) {
-    //        mean += sycl::distance(coordinates[id1], coordinates[id2] + delta);
+    //    decomposer.template run_kernel_on_domains<27>(coordinates, [&](int i, auto& p1, auto& p2) {
+    //        mean += sycl::distance(p1, p2);
     //        count++;
-    //        //   std::cout << "ID1 " << id1 << ", ID2 " << id2 << ", distance: " << sycl::distance(coordinates[id1], coordinates[id2]) << std::endl;
     //    });
     //    std::cout << "Mean: " << mean / count << std::endl;
 
