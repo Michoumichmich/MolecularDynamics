@@ -103,7 +103,7 @@ private:
     [[nodiscard]] inline sycl::vec<index_t, 3> bind_coordinate_to_domain(sim::coordinate<T>& coord) const {
 #pragma unroll
         for (int dim = 0; dim < 3; ++dim) {
-            if (coord[dim] < min_[dim] || coord[dim] > max_[dim]) { coord[dim] = sim::floar_wrap(coord[dim], min_[dim], max_[dim]); }
+            if (coord[dim] < min_[dim] || coord[dim] >= max_[dim]) { coord[dim] = sim::floar_wrap(coord[dim], min_[dim], max_[dim]); }
         }
 
         const auto tmp = (coord - min_) / width_;
