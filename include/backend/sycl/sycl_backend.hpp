@@ -33,12 +33,12 @@ template<typename KernelName> static inline std::pair<size_t, size_t> query_kern
         //size_t register_count = kernel.get_info<sycl::info::kernel_device_specific::ext_codeplay_num_regs>(q.get_device());
         max_items = std::min(max_items, kernel.get_info<sycl::info::kernel_device_specific::work_group_size>(q.get_device()));
         preferred_multiple = std::min(preferred_multiple, kernel.get_info<sycl::info::kernel_device_specific::preferred_work_group_size_multiple>(q.get_device()));
-        return {max_items, preferred_multiple};
     } catch (std::exception& e) {
         std::cout << "Couldn't read kernel properties for device: " << q.get_device().get_info<sycl::info::device::name>() << " got exception: " << e.what() << std::endl;
     }
 #endif
-    return {max_items, max_items};
+    //std::cout << "Max items: " << max_items << ", Preferred_Multiple: " << preferred_multiple << std::endl;
+    return {max_items, preferred_multiple};
 }
 
 template<typename kernel> static inline size_t restrict_work_group_size(size_t size, const sycl::queue& q) noexcept {
@@ -47,6 +47,7 @@ template<typename kernel> static inline size_t restrict_work_group_size(size_t s
     auto rqd_work_per_cu = (size + max_compute_units - 1) / max_compute_units;
     while (rqd_work_per_cu > max_group_size) { rqd_work_per_cu /= 2; }
     auto per_work_item = preferred_multiple * ((rqd_work_per_cu + preferred_multiple + 1) / preferred_multiple);
+    //std::cout << "per_work_item: " << per_work_item << std::endl;
     return per_work_item;
 }
 
@@ -55,6 +56,7 @@ static inline size_t restrict_work_group_size(size_t size, const sycl::queue& q)
     const auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
     auto rqd_work_per_cu = (size + max_compute_units - 1) / max_compute_units;
     while (rqd_work_per_cu > max_work_group_size) { rqd_work_per_cu /= 2; }
+    //std::cout << "rqd_work_per_cu: " << rqd_work_per_cu << std::endl;
     return rqd_work_per_cu;
 }
 
