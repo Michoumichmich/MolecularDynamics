@@ -43,41 +43,39 @@ public:
         for (index_t current_domain_id = 0; current_domain_id < num_domains; ++current_domain_id) {
             const auto domain_coordinates = delinearize(current_domain_id);
             index_t n_neighbors = 0;
-
             std::array<std::pair<index_t, sim::coordinate<T>>, n_syms> neighbors{};
             for (const auto& verlet_sym: sim::get_symetries<n_syms>()) {
-                sim::coordinate<T> delta{};
+                sim::coordinate<T> neighbor_delta{};
                 auto neighbor_domain_coordinates = domain_coordinates + verlet_sym;
 #pragma unroll
                 for (int dim = 0; dim < 3; ++dim) {
                     if (neighbor_domain_coordinates[dim] >= domains_sizes[dim]) {
                         neighbor_domain_coordinates[dim] -= domains_sizes[dim];
-                        delta[dim] = max_[dim] - min_[dim];
+                        neighbor_delta[dim] = max_[dim] - min_[dim];
                     } else if (neighbor_domain_coordinates[dim] < 0) {
                         neighbor_domain_coordinates[dim] += domains_sizes[dim];
-                        delta[dim] = min_[dim] - max_[dim];
+                        neighbor_delta[dim] = min_[dim] - max_[dim];
                     }
                 }
                 auto neighbor_linear_id = linearize(neighbor_domain_coordinates);
                 sim::internal::assume(neighbor_linear_id >= 0 && neighbor_linear_id < num_domains);
                 neighbors[n_neighbors].first = neighbor_linear_id;
-                neighbors[n_neighbors].second = delta;
+                neighbors[n_neighbors].second = neighbor_delta;
                 ++n_neighbors;
             }
 
             for (const index_t& current_domain_particle_id: domains[current_domain_id]) {
                 const auto current_particle = particles[current_domain_particle_id];
                 for (const auto& neighbor: neighbors) {
-                    const auto delta = neighbor.second;
+                    const sim::coordinate<T> neighbor_delta = neighbor.second;
                     particles_buffer.clear();
+
                     for (const index_t& other_particle_id: domains[neighbor.first]) {
                         /**
                          * If the two particles are different, its always ok, else we have the same particle id twice, so we must ensure that the
                          * delta is not null.
                          */
-                        if (current_domain_particle_id != other_particle_id || (delta.x() != 0 && delta.y() != 0 && delta.z() != 0)) {
-                            particles_buffer.template emplace_back(particles[other_particle_id] + delta);
-                        }
+                        if (current_domain_particle_id != other_particle_id) { particles_buffer.template emplace_back(particles[other_particle_id] + neighbor_delta); }
                     }
 
                     for (const auto& other_particle: particles_buffer) { kernel(current_domain_particle_id, current_particle, other_particle); }
@@ -89,15 +87,15 @@ public:
 private:
     [[nodiscard]] inline constexpr index_t get_domains_count() const { return domains_sizes.x() * domains_sizes.y() * domains_sizes.z(); }
 
-    [[nodiscard]] inline constexpr index_t linearize(const sycl::vec<index_t, 3>& domain_ids) const {
-        return domain_ids.x() * domains_sizes.y() * domains_sizes.z() + domain_ids.y() * domains_sizes.z() + domain_ids.z();
+    [[nodiscard]] inline constexpr index_t linearize(const sycl::vec<index_t, 3>& id) const {
+        return id.x() * domains_sizes.y() * domains_sizes.z() + id.y() * domains_sizes.z() + id.z();
     }
 
     [[nodiscard]] inline sycl::vec<index_t, 3> delinearize(index_t id) const {
         index_t z = id % domains_sizes.z();
-        index_t y = (id - z) % domains_sizes.y();
-        index_t x = (id - z - y * domains_sizes.z()) / (domains_sizes.y() * domains_sizes.z());
-        return sycl::vec<index_t, 3>{x, y, z};
+        index_t y = (id / domains_sizes.z()) % domains_sizes.y();
+        index_t x = id / (domains_sizes.y() * domains_sizes.z());
+        return {x, y, z};
     }
 
     [[nodiscard]] inline sycl::vec<index_t, 3> bind_coordinate_to_domain(sim::coordinate<T>& coord) const {

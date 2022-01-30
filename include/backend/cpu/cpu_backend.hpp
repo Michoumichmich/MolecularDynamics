@@ -17,7 +17,7 @@ static inline void update_lennard_jones_field_cpu_impl(   //
     std::fill(forces.begin(), forces.end(), coordinate<T>{});
     if constexpr (use_domain_decomposition) { decomposer.update_domains(coordinates); }
     decomposer.template run_kernel_on_domains<n_sym>(coordinates, [&](const auto i, const auto& this_particule, const auto& other_particule) mutable {
-        const T squared_distance = compute_squared_distance(this_particule, other_particule) + 0.001;
+        const T squared_distance = compute_squared_distance(this_particule, other_particule);
         if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut)) return;
         internal::assume(squared_distance != T{});
         //if (squared_distance == T{}) { throw std::runtime_error("Got null distance"); }
@@ -25,9 +25,6 @@ static inline void update_lennard_jones_field_cpu_impl(   //
         const T frac_pow_6 = integral_power<3>(frac_pow_2);
         const T force_prefactor = (frac_pow_6 - 1) * frac_pow_6 * frac_pow_2;
         auto force = (this_particule - other_particule) * force_prefactor * config.epsilon_star * 48 / (config.r_star * config.r_star);
-        if constexpr (use_domain_decomposition) {
-            if (sycl::length(force) > config.max_force) return;   //{ printf("%f %f\n", squared_distance, sycl::length(force)); }
-        }
         forces[i] += force;
         energies[i] += 2 * config.epsilon_star * (integral_power<2>(frac_pow_6) - 2 * frac_pow_6);   //We divided because the energies would be counted twice otherwise
     });

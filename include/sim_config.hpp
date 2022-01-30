@@ -28,10 +28,9 @@ template<typename T> struct configuration {
     T L = static_cast<T>(35);                                // 30 in the subject
 
     // Domain decomposition parameters
-    coordinate<T> domain_mins{-25, -25, -25};
-    coordinate<T> domain_maxs{25, 25, 25};
-    coordinate<T> domain_widths{5, 5, 5};
-    T max_force = 500;
+    coordinate<T> domain_mins{-20, -20, -20};
+    coordinate<T> domain_maxs{20, 20, 20};
+    coordinate<T> domain_widths{4, 4, 4};
 
     // PDB Out settings
     int iter_per_frame = 100;                                      //

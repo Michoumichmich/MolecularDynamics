@@ -5,15 +5,14 @@ static bool use_domain_decomposition = false;
 
 template<typename T> void run_example(size_t n, const std::vector<sim::coordinate<T>>& coordinates, sim::configuration<T> config = {}) {
     std::cout << config << std::endl;
-    constexpr int print_periodicity = 50;
 
     auto run = [&](auto simulation) mutable {
+        constexpr int print_periodicity = 50;
         for (size_t i = 0; i < n; ++i) {
             if (i % print_periodicity == 0) std::cout << simulation << std::endl;
             simulation.run_iter();
-        };
+        }
     };
-
 
     if (use_sycl) {
 #if BUILD_SYCL
@@ -22,10 +21,11 @@ template<typename T> void run_example(size_t n, const std::vector<sim::coordinat
         run(sim::molecular_dynamics<T, sim::sycl_backend>(coordinates, config, sim::sycl_backend<T>{coordinates.size(), q}));
 #endif
     } else {
-        std::cout << "Running on openMP." << std::endl;
         if (use_domain_decomposition) {
+            std::cout << "Running on CPU/openMP with domain decomposition." << std::endl;
             run(sim::molecular_dynamics<T, sim::cpu_backend_decompose>(coordinates, config));
         } else {
+            std::cout << "Running on CPU/openMP WITHOUT domain decomposition." << std::endl;
             run(sim::molecular_dynamics<T, sim::cpu_backend_regular>(coordinates, config));
         }
     }
@@ -44,11 +44,12 @@ int main(int argc, char** argv) {
 
 
 #ifdef BUILD_DOUBLE
-    /* Default simulation */
-    //   run_example(100'000, coordinates_double);
 
     /* For the domain decomposition */
-    run_example(100'000, coordinates_double, {.dt = 0.01, .use_berdensten_thermostate = true, .r_cut = 10, .n_symetries = 125});
+    run_example(100'000, coordinates_double, {.dt = 0.1, .use_berdensten_thermostate = true, .r_cut = 8, .n_symetries = 125});
+
+    /* Default simulation */
+    run_example(100'000, coordinates_double);
 
     /* Without the thermostate */
     run_example(100'000, coordinates_double, {.dt = 0.1, .use_berdensten_thermostate = false});
