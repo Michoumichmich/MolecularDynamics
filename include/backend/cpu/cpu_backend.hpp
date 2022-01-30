@@ -1,6 +1,8 @@
 #pragma once
 #include "cpu_backend.h"
 
+#include "domain_decomposition.hpp"
+
 namespace sim {
 /**
  *
@@ -81,6 +83,18 @@ static inline std::tuple<coordinate<T>, T> velocity_verlet_cpu_impl(   //
         std::vector<coordinate<T>>& momentums,                         //
         const configuration<T>& config) noexcept {
 
+
+    //    auto decomposer = domain_decomposer<T>{coordinate<T>(-10, -10, -10), coordinate<T>(10, 10, 10), coordinate<T>(3, 3, 3)};
+    //    auto domains = decomposer.compute_domains(coordinates);
+    //    T mean = 0;
+    //    int count = 0;
+    //    decomposer.template run_kernel_on_domains(domains, [&](auto id1, auto id2, coordinate<T> delta) {
+    //        mean += sycl::distance(coordinates[id1], coordinates[id2] + delta);
+    //        count++;
+    //        //   std::cout << "ID1 " << id1 << ", ID2 " << id2 << ", distance: " << sycl::distance(coordinates[id1], coordinates[id2]) << std::endl;
+    //    });
+    //    std::cout << "Mean: " << mean / count << std::endl;
+
     internal::assume(coordinates.size() == forces.size() && forces.size() == momentums.size());
     const size_t N = coordinates.size();
 
@@ -99,7 +113,6 @@ static inline std::tuple<coordinate<T>, T> velocity_verlet_cpu_impl(   //
     return std::tuple{sum, energy};
 }
 
-
 template<typename T> void cpu_backend<T>::run_velocity_verlet(const configuration<T>& config) {
     if (config.n_symetries == 1) {
         last_lennard_jones_metrics_ = velocity_verlet_cpu_impl<T, 1>(coordinates_, forces_, momentums_, config);
@@ -111,7 +124,6 @@ template<typename T> void cpu_backend<T>::run_velocity_verlet(const configuratio
         throw std::runtime_error("Unsupported");
     }
 }
-
 
 template<typename T> void cpu_backend<T>::randinit_momentums(T min, T max) {
     std::generate(momentums_.begin(), momentums_.end(), [=]() {   //

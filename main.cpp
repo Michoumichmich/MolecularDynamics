@@ -6,6 +6,7 @@ template<typename T> void run_example(size_t n, const std::vector<sim::coordinat
     std::cout << config << std::endl;
     constexpr int print_periodicity = 10;
     if (use_sycl) {
+#if BUILD_SYCL
         auto q = sycl::queue{sycl::default_selector{}};
         std::cout << "Running on SYCL with " << q.get_device().get_info<sycl::info::device::name>() << std::endl;
         auto simulation = sim::molecular_dynamics<T, sim::sycl_backend>(coordinates, config, sim::sycl_backend<T>{coordinates.size(), q});
@@ -13,6 +14,7 @@ template<typename T> void run_example(size_t n, const std::vector<sim::coordinat
             if (i % print_periodicity == 0) std::cout << simulation << std::endl;
             simulation.run_iter();
         }
+#endif
     } else {
         std::cout << "Running on openMP." << std::endl;
         auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
