@@ -10,7 +10,7 @@ template<typename T> class sycl_backend : backend_interface<T> {
 public:
     explicit sycl_backend(size_t size, const sycl::queue& queue = sycl::queue{}, bool maximise_occupancy = true);
 
-    void init_backend(const std::vector<coordinate<T>>& particules) override;
+    void init_backend(const std::vector<coordinate<T>>& particules, const configuration<T>& config) override;
 
     [[nodiscard]] inline size_t get_particules_count() const override { return size_; }
 

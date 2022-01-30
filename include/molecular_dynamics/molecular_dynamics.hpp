@@ -10,7 +10,7 @@ molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<
       writer_(config.out_file),   //
       backend_(std::move(be)) {
 
-    backend_.init_backend(std::move(particules));
+    backend_.init_backend(std::move(particules), config);
 
     // Initializes the forces field.
     backend_.init_lennard_jones_field(config);

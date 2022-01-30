@@ -17,7 +17,7 @@ template<typename T> void run_example(size_t n, const std::vector<sim::coordinat
 #endif
     } else {
         std::cout << "Running on openMP." << std::endl;
-        auto simulation = sim::molecular_dynamics<T, sim::cpu_backend>(coordinates, config);
+        auto simulation = sim::molecular_dynamics<T, sim::cpu_backend_regular>(coordinates, config);
         for (size_t i = 0; i < n; ++i) {
             if (i % print_periodicity == 0) std::cout << simulation << std::endl;
             simulation.run_iter();

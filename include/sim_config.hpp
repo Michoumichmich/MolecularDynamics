@@ -27,6 +27,10 @@ template<typename T> struct configuration {
     int n_symetries = 27;                                    //
     T L = static_cast<T>(35);                                // 30 in the subject
 
+    coordinate<T> domain_mins{-15, -15, -15};
+    coordinate<T> domain_maxs{15, 15, 15};
+    coordinate<T> domain_widths{4, 4, 4};
+
     // PDB Out settings
     int iter_per_frame = 100;                                      //
     std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.

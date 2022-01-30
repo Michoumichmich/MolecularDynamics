@@ -7,7 +7,7 @@ namespace sim {
 
 template<typename T> class backend_interface {
 public:
-    virtual void init_backend(const std::vector<coordinate<T>>& particules) = 0;
+    virtual void init_backend(const std::vector<coordinate<T>>& particules, const configuration<T>& config) = 0;
 
 
     /**

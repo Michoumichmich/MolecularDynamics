@@ -192,7 +192,9 @@ sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue, bool maximi
 #endif
 }
 
-template<typename T> void sycl_backend<T>::init_backend(const std::vector<coordinate<T>>& particules) { q.copy(particules.data(), coordinates_.get(), size_).wait(); }
+template<typename T> void sycl_backend<T>::init_backend(const std::vector<coordinate<T>>& particules, const configuration<T>&) {
+    q.copy(particules.data(), coordinates_.get(), size_).wait();
+}
 
 template<typename T> std::tuple<coordinate<T>, T> sycl_backend<T>::get_last_lennard_jones_metrics() const { return {compute_error_lennard_jones(), reduce_energies()}; }
 

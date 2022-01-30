@@ -1,10 +1,13 @@
 #pragma once
 
-template<typename T> struct domain_decomposer {
-
+template<typename T, bool is_domain_decomposer = true> struct domain_decomposer {
+public:
+    static constexpr bool is_domain_decomposer_ = true;
     using index_t = int32_t;
 
-    explicit domain_decomposer(sycl::vec<T, 3> min, sycl::vec<T, 3> max, sycl::vec<T, 3> width)
+    domain_decomposer() = default;
+
+    explicit domain_decomposer(sim::coordinate<T> min, sim::coordinate<T> max, sim::coordinate<T> width)
         : min_(min), max_(max), width_(width),   //
           domains_sizes(std::ceil((max.x() - min.x()) / width.x()), std::ceil((max.y() - min.y()) / width.y()), std::ceil((max.z() - min.z()) / width.z())) {
         sim::internal::assume(width.x() > 0 && width.y() > 0 && width.z() > 0);
@@ -68,7 +71,7 @@ template<typename T> struct domain_decomposer {
                 const auto current_particle = particles[current_domain_particle_id];
                 for (const auto& neighbor: neighbors) {
                     const auto delta = neighbor.second;
-                    particles_buffer.clear();
+                    std::fill(particles_buffer.begin(), particles_buffer.end(), sim::coordinate<T>{});
                     for (const index_t& other_particle_id: domains[neighbor.first]) {
                         /**
                          * If the two particles are different, its always ok, else we have the same particle id twice, so we must ensure that the
@@ -116,8 +119,40 @@ private:
     }
 
 private:
-    sycl::vec<T, 3> min_, max_, width_;
-    sycl::vec<index_t, 3> domains_sizes;
+    sim::coordinate<T> min_{}, max_{}, width_{};
+    sycl::vec<index_t, 3> domains_sizes{};
     mutable std::vector<sim::coordinate<T>> particles_buffer{};
     mutable std::vector<std::vector<index_t>> domains{};
+};
+
+
+/**
+ * Dummy
+ * @tparam T
+ */
+template<typename T> struct domain_decomposer<T, false> {
+public:
+    static constexpr bool is_domain_decomposer_ = false;
+    domain_decomposer() = default;
+    explicit domain_decomposer(T box_width) : L(box_width) {}
+    template<int n_syms = 125, typename func> inline void run_kernel_on_domains(const std::vector<sim::coordinate<T>>& particles, func&& kernel) const noexcept {
+
+#pragma omp parallel for default(none) shared(particles, kernel, L)
+        for (auto i = 0U; i < particles.size(); ++i) {
+            for (auto j = 0U; j < particles.size(); ++j) {
+
+#pragma unroll
+                for (const auto& sym: sim::get_symetries<n_syms>()) {
+                    if (i == j && sym.x() == 0 && sym.y() == 0 && sym.z() == 0) continue;
+                    const sim::coordinate<T> delta{sym.x() * L, sym.y() * L, sym.z() * L};
+                    const auto other_particule = delta + particles[j];
+                    const auto this_particule = particles[i];
+                    kernel(i, this_particule, other_particule);
+                }
+            }
+        }
+    }
+
+private:
+    T L{};
 };
