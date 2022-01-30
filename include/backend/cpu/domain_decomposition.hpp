@@ -7,7 +7,7 @@ public:
 
     domain_decomposer() = default;
 
-    explicit domain_decomposer(sim::coordinate<T> min, sim::coordinate<T> max, sim::coordinate<T> width)
+    inline explicit domain_decomposer(sim::coordinate<T> min, sim::coordinate<T> max, sim::coordinate<T> width)
         : min_(min), max_(max), width_(width),   //
           domains_sizes(std::ceil((max.x() - min.x()) / width.x()), std::ceil((max.y() - min.y()) / width.y()), std::ceil((max.z() - min.z()) / width.z())) {
         sim::internal::assume(width.x() > 0 && width.y() > 0 && width.z() > 0);
@@ -37,7 +37,7 @@ public:
         }
     }
 
-    template<int n_syms = 125, typename func> inline void run_kernel_on_domains(const std::vector<sim::coordinate<T>>& particles, func&& kernel) const noexcept {
+    template<int n_syms, typename func> inline void run_kernel_on_domains(const std::vector<sim::coordinate<T>>& particles, func&& kernel) const noexcept {
         const auto num_domains = static_cast<index_t>(domains.size());
         sim::internal::assume(num_domains == get_domains_count());
         for (index_t current_domain_id = 0; current_domain_id < num_domains; ++current_domain_id) {
@@ -135,7 +135,7 @@ public:
     static constexpr bool is_domain_decomposer_ = false;
     domain_decomposer() = default;
     explicit domain_decomposer(T box_width) : L(box_width) {}
-    template<int n_syms = 125, typename func> inline void run_kernel_on_domains(const std::vector<sim::coordinate<T>>& particles, func&& kernel) const noexcept {
+    template<int n_syms, typename func> inline void run_kernel_on_domains(const std::vector<sim::coordinate<T>>& particles, func&& kernel) const noexcept {
 
 #pragma omp parallel for default(none) shared(particles, kernel, L)
         for (auto i = 0U; i < particles.size(); ++i) {

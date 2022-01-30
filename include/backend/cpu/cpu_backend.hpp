@@ -13,15 +13,10 @@ template<bool use_domain_decomposition, typename T, int n_sym>
 static inline void update_lennard_jones_field_cpu_impl(   //
         const std::vector<coordinate<T>>& coordinates, const configuration<T>& config, std::vector<coordinate<T>>& forces, std::vector<T>& energies,
         const domain_decomposer<T, use_domain_decomposition>& decomposer) {
-
-
     std::fill(energies.begin(), energies.end(), 0);
     std::fill(forces.begin(), forces.end(), coordinate<T>{});
-
-
     if constexpr (use_domain_decomposition) { decomposer.update_domains(coordinates); }
-
-    decomposer.template run_kernel_on_domains(coordinates, [&](const auto i, const auto& this_particule, const auto& other_particule) mutable {
+    decomposer.template run_kernel_on_domains<n_sym>(coordinates, [&](const auto i, const auto& this_particule, const auto& other_particule) mutable {
         T squared_distance = compute_squared_distance(this_particule, other_particule);
         if (config.use_cutoff && squared_distance > integral_power<2>(config.r_cut)) return;
         internal::assume(squared_distance != T{});
