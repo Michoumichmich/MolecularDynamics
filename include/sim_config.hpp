@@ -12,36 +12,35 @@ using namespace std::string_literals;
  * @tparam T
  */
 template<typename T> struct configuration {
-    T m_i = 18;                                             // Mass of a particle in some unit
+    [[no_unique_address]] const T m_i = 18;                 // Mass of a particle in some unit
     static constexpr T conversion_force = 0.0001 * 4.186;   //
     static constexpr T constante_R = 0.00199;               //
-    T dt = 1;                                               // 0.1 fs, should be 1.
-    T T0 = 300;                                             // 300 Kelvin
+    [[no_unique_address]] const T dt = 1;                   // 0.1 fs, should be 1.
+    [[no_unique_address]] const T T0 = 300;                 // 300 Kelvin
 
     // Berdensten thermostate
-    bool use_berdensten_thermostate = true;
+    [[no_unique_address]] const bool use_berdensten_thermostate = true;
     static constexpr T gamma = 0.01;        // Gamma for the berdensten thermostate, should be 0.01
     static constexpr size_t m_step = 100;   // Should be 100
 
     // Lennard jones field config
-    T r_star = static_cast<T>(3);              // R* distance: 3A
-    T epsilon_star = static_cast<T>(0.2);      //
-    static constexpr bool use_cutoff = true;   // Whether to use cutoff or not
-    T r_cut = static_cast<T>(35);              // Should be 10 Angstroms
-    int n_symetries = 27;                      // Symetries when not domain decomposition else number of neighbor domains.
-    T L = static_cast<T>(35);                  // 30 in the subject
+    [[no_unique_address]] const T r_star = static_cast<T>(3);           // R* distance: 3A
+    [[no_unique_address]] const T epsilon_star = static_cast<T>(0.2);   //
+    static constexpr bool use_cutoff = true;                            // Whether to use cutoff or not
+    [[no_unique_address]] const T r_cut = static_cast<T>(35);           // Should be 10 Angstroms
+    [[no_unique_address]] const int n_symetries = 27;                   // Symetries when not domain decomposition else number of neighbor domains.
+    [[no_unique_address]] const T L = static_cast<T>(35);               // 30 in the subject
 
     // Domain decomposition parameters
-    coordinate<T> domain_mins{-20, -20, -20};   //
-    coordinate<T> domain_maxs{20, 20, 20};      //
-    coordinate<T> domain_widths{4, 4, 4};       //
-    int decompose_periodicity = 100;            //
+    [[no_unique_address]] const coordinate<T> domain_mins{-20, -20, -20};   //
+    [[no_unique_address]] const coordinate<T> domain_maxs{20, 20, 20};      //
+    [[no_unique_address]] const coordinate<T> domain_widths{4, 4, 4};       //
+    [[no_unique_address]] const int decompose_periodicity = 100;            //
 
     /* PDB Out settings */
-    int iter_per_frame = 100;                                      // Sets the store prediodicity.
-    std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.
-    bool store_lennard_jones_metrics = false;
-
+    [[no_unique_address]] const int iter_per_frame = 100;                                      // Sets the store prediodicity.
+    [[no_unique_address]] const std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.
+    [[no_unique_address]] const bool store_lennard_jones_metrics = false;
 
     /**
      * @return some string representing the current configuration (useful to make a file name)

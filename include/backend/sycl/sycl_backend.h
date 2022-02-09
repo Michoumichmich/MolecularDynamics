@@ -42,13 +42,13 @@ private:
     T reduce_energies() const;
     coordinate<T> compute_error_lennard_jones() const;
 
-    mutable sycl::queue q;                                //
-    size_t size_;                                         //
-    sycl_unique_device_ptr<coordinate<T>> coordinates_;   //
-    sycl_unique_device_ptr<coordinate<T>> momentums_;     // Vi * mi
-    sycl_unique_device_ptr<coordinate<T>> forces_;        // Lennard Jones Field
-    sycl_unique_device_ptr<T> particule_energy_;          // Lennard Jones Field
-    mutable std::vector<coordinate<T>> tmp_buf_;          //
+    mutable sycl::queue q;                                                      //
+    [[no_unique_address]] size_t size_;                                         //
+    [[no_unique_address]] sycl_unique_device_ptr<coordinate<T>> coordinates_;   //
+    [[no_unique_address]] sycl_unique_device_ptr<coordinate<T>> momentums_;     // Vi * mi
+    [[no_unique_address]] sycl_unique_device_ptr<coordinate<T>> forces_;        // Lennard Jones Field
+    [[no_unique_address]] sycl_unique_device_ptr<T> particule_energy_;          // Lennard Jones Field
+    [[no_unique_address]] mutable std::vector<coordinate<T>> tmp_buf_;          //
 
 public:
     /**
@@ -63,7 +63,7 @@ public:
     };
 
 private:
-    kernel_configs configs_;
+    [[no_unique_address]] kernel_configs configs_;
 };
 
 

@@ -205,13 +205,13 @@ private:
     }
 
 private:
-    coordinate<T> min_{}, max_{}, width_{};                               // Domain configuration
-    sycl::vec<index_t, 3> domain_count{};                                 // Deduced number of domains in each dimension
-    mutable std::vector<std::vector<coordinate<T>>> particles_buffer{};   // Buffer used by the openMP implementation. We have OMP_NUM_THREADS buffers.
-    mutable std::vector<std::vector<index_t>> domains{};                  // domain[i] contains the particle IDs that fall into this domain
-    int decompose_period_ = 1;                                            //
-    mutable int iters_since_last_update = 0;                              //
-    mutable int max_domain_size_cached = 0;                               // Caching the max domain size to avoid expensive computation.
+    [[no_unique_address]] coordinate<T> min_{}, max_{}, width_{};                               // Domain configuration
+    [[no_unique_address]] sycl::vec<index_t, 3> domain_count{};                                 // Deduced number of domains in each dimension
+    [[no_unique_address]] mutable std::vector<std::vector<coordinate<T>>> particles_buffer{};   // Buffer used by the openMP implementation. We have OMP_NUM_THREADS buffers.
+    [[no_unique_address]] mutable std::vector<std::vector<index_t>> domains{};                  // domain[i] contains the particle IDs that fall into this domain
+    [[no_unique_address]] int decompose_period_ = 1;                                            //
+    [[no_unique_address]] mutable int iters_since_last_update = 0;                              //
+    [[no_unique_address]] mutable int max_domain_size_cached = 0;                               // Caching the max domain size to avoid expensive computation.
 };
 
 
@@ -256,6 +256,6 @@ public:
     }
 
 private:
-    T L{};
+    [[no_unique_address]] T L{};
 };
 }   // namespace sim

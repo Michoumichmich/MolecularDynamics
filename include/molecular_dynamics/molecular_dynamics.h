@@ -47,23 +47,23 @@ private:
     void try_to_apply_berendsen_thermostate() noexcept;
 
 private:
-    const configuration<T> configuration_;   //
-    size_t simulation_idx_;                  //
-    pdb_writer writer_;                      //
-    backend<T> backend_;                     //
-    T kinetic_temperature_{};                //
-    T kinetic_energy_{};                     //
+    [[no_unique_address]] const configuration<T> configuration_;   //
+    [[no_unique_address]] size_t simulation_idx_;                  //
+    [[no_unique_address]] pdb_writer writer_;                      //
+    [[no_unique_address]] backend<T> backend_;                     //
+    [[no_unique_address]] T kinetic_temperature_{};                //
+    [[no_unique_address]] T kinetic_energy_{};                     //
 
 
     /* Metrics */
 private:
     // Mutable variables are the variables that are easily and often re-computed based on the simulation
     // they should be updated as often as possible, but don't really affect the simulation at all
-    mutable coordinate<T> forces_sum_{};     //
-    mutable T lennard_jones_energy_{};       //
-    mutable double avg_iter_duration_ = 1;   //
-    mutable double total_energy_ = 0;        //
-    mutable double avg_delta_energy_ = 0;    //
+    [[no_unique_address]] mutable coordinate<T> forces_sum_{};     //
+    [[no_unique_address]] mutable T lennard_jones_energy_{};       //
+    [[no_unique_address]] mutable double avg_iter_duration_ = 1;   //
+    [[no_unique_address]] mutable double total_energy_ = 0;        //
+    [[no_unique_address]] mutable double avg_delta_energy_ = 0;    //
 
 
     /* Not very important stuff */

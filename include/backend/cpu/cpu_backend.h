@@ -40,12 +40,12 @@ public:
     [[nodiscard]] std::tuple<coordinate<T>, T> get_last_lennard_jones_metrics() const OPT_OVERRIDE;
 
 private:
-    size_t size_{};
-    std::vector<coordinate<T>> coordinates_{};   //
-    std::vector<coordinate<T>> momentums_{};     // Vi * mi
-    std::vector<coordinate<T>> forces_{};        // Lennard Jones Field
-    std::vector<T> energies_{};                  // Lennard Jones Field
-    domain_decomposer<T, use_domain_decomposition> decomposer_{};
+    [[no_unique_address]] size_t size_{};
+    [[no_unique_address]] std::vector<coordinate<T>> coordinates_{};   //
+    [[no_unique_address]] std::vector<coordinate<T>> momentums_{};     // Vi * mi
+    [[no_unique_address]] std::vector<coordinate<T>> forces_{};        // Lennard Jones Field
+    [[no_unique_address]] std::vector<T> energies_{};                  // Lennard Jones Field
+    [[no_unique_address]] domain_decomposer<T, use_domain_decomposition> decomposer_{};
 };
 
 
