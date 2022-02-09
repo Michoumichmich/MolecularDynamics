@@ -16,14 +16,14 @@ public:
      * @param particules
      * @param config
      */
-    molecular_dynamics(const std::vector<coordinate<T>>& particules, configuration<T> config, backend<T>&& be = {});
+    EXPORT molecular_dynamics(const std::vector<coordinate<T>>& particules, configuration<T> config, backend<T>&& be = {});
 
-    molecular_dynamics(const std::vector<coordinate<T>>& particules, const std::vector<coordinate<T>>& vitesses, configuration<T> config, backend<T>&& be = {});
+    EXPORT molecular_dynamics(const std::vector<coordinate<T>>& particules, const std::vector<coordinate<T>>& vitesses, configuration<T> config, backend<T>&& be = {});
 
     /**
      *
      */
-    void run_iter();
+    EXPORT void run_iter();
 
 private:
     /**
@@ -67,27 +67,28 @@ private:
 
 
     /* Not very important stuff */
+    EXPORT void update_display_metrics() const noexcept;
+
+    EXPORT T compute_barycenter_speed_norm() const;
+
 public:
-    void update_display_metrics() const noexcept;
-
-
     /**
      *
      * @param os
      * @param state
      * @return
      */
-    friend std::ostream& operator<<(std::ostream& os, const molecular_dynamics& state) {
+    EXPORT friend std::ostream& operator<<(std::ostream& os, const molecular_dynamics& state) {
         state.update_display_metrics();
-        os << std::setprecision(10) << "[" << state.simulation_idx_ << "] "                                                                                           //
-           << "E_tot: " << std::setw(13) << std::setfill(' ') << state.total_energy_                                                                                  //
-           << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                                                                          //
-           << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                                                                //
-           << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                                                                        //
-           << ", Field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(state.forces_sum_)                                                           //
-           << ", Barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(state.backend_.mean_kinetic_momentum()) / state.configuration_.m_i   //
-           << ", Avg_delta_energy: " << std::setprecision(5) << state.avg_delta_energy_                                                                               //
-           << ", Time: " << state.configuration_.dt * state.simulation_idx_ << " fs"                                                                                  //
+        os << std::setprecision(10) << "[" << state.simulation_idx_ << "] "                                                //
+           << "E_tot: " << std::setw(13) << std::setfill(' ') << state.total_energy_                                       //
+           << ", Temp: " << std::setw(13) << std::setfill(' ') << state.kinetic_temperature_                               //
+           << ", E_c: " << std::setw(13) << std::setfill(' ') << state.kinetic_energy_                                     //
+           << ", E_pot: " << std::setw(13) << std::setfill(' ') << state.lennard_jones_energy_                             //
+           << ", Field_sum_norm: " << std::setw(13) << std::setfill(' ') << sycl::length(state.forces_sum_)                //
+           << ", Barycenter_speed_norm: " << std::setw(13) << std::setfill(' ') << state.compute_barycenter_speed_norm()   //
+           << ", Avg_delta_energy: " << std::setprecision(5) << state.avg_delta_energy_                                    //
+           << ", Time: " << state.configuration_.dt * state.simulation_idx_ << " fs"                                       //
            << ", Speed: " << std::setprecision(3) << 1.0 / state.avg_iter_duration_ << " iter/s.";
         return os;
     }

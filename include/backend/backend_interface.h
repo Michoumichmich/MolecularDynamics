@@ -15,6 +15,7 @@ namespace sim {
  */
 template<typename T> class backend_interface {
 public:
+#ifdef DEBUG_INTERFACE
     virtual void set_particles(const std::vector<coordinate<T>>& particles, const configuration<T>& config) = 0;
 
     virtual void set_speeds(const std::vector<coordinate<T>>& speeds, const configuration<T>& config) = 0;
@@ -72,5 +73,6 @@ public:
      * @return
      */
     virtual void update_lennard_jones_field(const configuration<T>& config) = 0;
+#endif
 };
 }   // namespace sim

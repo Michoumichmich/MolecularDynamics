@@ -12,7 +12,7 @@ namespace sim {
  * @param be
  */
 template<typename T, template<typename> class backend>
-molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<T>>& particules, configuration<T> config, backend<T>&& be)
+EXPORT molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<T>>& particules, configuration<T> config, backend<T>&& be)
     : configuration_(config),                                         //
       simulation_idx_(0),                                             //
       writer_(config.out_file, config.store_lennard_jones_metrics),   //
@@ -30,14 +30,15 @@ molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<
     backend_.center_kinetic_momentums();
 
     // Computes the temperature of the systme and scales the momentums to reach the target temperature.
-    // fixup_temperature(configuration_.T0);
+    fixup_temperature(configuration_.T0);
     update_display_metrics();
     backend_.store_particles_coordinates(writer_, simulation_idx_, kinetic_temperature_, lennard_jones_energy_);
 }
 
 
 template<typename T, template<typename> class backend>
-molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<T>>& particules, const std::vector<coordinate<T>>& speeds, configuration<T> config, backend<T>&& be)
+EXPORT molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<T>>& particules, const std::vector<coordinate<T>>& speeds, configuration<T> config,
+                                                          backend<T>&& be)
     : configuration_(config),                                         //
       simulation_idx_(0),                                             //
       writer_(config.out_file, config.store_lennard_jones_metrics),   //
@@ -49,14 +50,14 @@ molecular_dynamics<T, backend>::molecular_dynamics(const std::vector<coordinate<
     backend_.update_lennard_jones_field(config);
     fixup_temperature(configuration_.T0);
     recompute_kinetic_energy_and_temp();
-    backend_.store_particles_coordinates(writer_, lennard_jones_energy_, simulation_idx_, kinetic_temperature_);
+    backend_.store_particles_coordinates(writer_, simulation_idx_, kinetic_temperature_, lennard_jones_energy_);
 }
 
 
 /**
  *
  */
-template<typename T, template<typename> class backend> void molecular_dynamics<T, backend>::run_iter() {
+template<typename T, template<typename> class backend> EXPORT void molecular_dynamics<T, backend>::run_iter() {
     auto begin = std::chrono::high_resolution_clock::now();
     ++simulation_idx_;
 
@@ -80,7 +81,7 @@ template<typename T, template<typename> class backend> void molecular_dynamics<T
 
     if (simulation_idx_ % configuration_.iter_per_frame == 0) {
         if (configuration_.store_lennard_jones_metrics) { update_display_metrics(); }
-        backend_.store_particles_coordinates(writer_, lennard_jones_energy_, simulation_idx_, kinetic_temperature_);
+        backend_.store_particles_coordinates(writer_, simulation_idx_, lennard_jones_energy_, kinetic_temperature_);
     }
 }
 
@@ -128,7 +129,8 @@ template<typename T, template<typename> class backend> void molecular_dynamics<T
  * @tparam T
  * @tparam backend
  */
-template<typename T, template<typename> class backend> void molecular_dynamics<T, backend>::update_display_metrics() const noexcept {
+template<typename T, template<typename> class backend> EXPORT void molecular_dynamics<T, backend>::update_display_metrics() const noexcept {
+    // recompute_kinetic_energy_and_temp();
     auto [sum, energy] = backend_.get_last_lennard_jones_metrics();
     lennard_jones_energy_ = energy;
     forces_sum_ = sum;
@@ -138,4 +140,9 @@ template<typename T, template<typename> class backend> void molecular_dynamics<T
     total_energy_ = kinetic_energy_ + lennard_jones_energy_;
     avg_delta_energy_ = ((total_energy_ - prev_energy) * aging_coeff + avg_delta_energy_) / (1 + aging_coeff);
 }
+
+template<typename T, template<typename> class backend> T EXPORT molecular_dynamics<T, backend>::compute_barycenter_speed_norm() const {
+    return sycl::length(backend_.mean_kinetic_momentum()) / configuration_.m_i;
+}
+
 }   // namespace sim

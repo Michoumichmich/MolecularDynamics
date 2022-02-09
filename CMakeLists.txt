@@ -59,15 +59,17 @@ add_sycl_to_target(TARGET main_exam SOURCES main_exam.cpp)
 # OMP BE
 add_library(md_cpu SHARED src/molecular_dynamics_cpu.cpp)
 add_sycl_to_target(TARGET md_cpu SOURCES src/molecular_dynamics_cpu.cpp)
+target_compile_options(md_cpu PRIVATE "-fvisibility=hidden")
+
 target_link_libraries(main PRIVATE md_cpu)
 target_link_libraries(main_exam PRIVATE md_cpu)
-
 
 # SYCL BE
 if (SYCL)
     add_definitions(-DBUILD_SYCL)
     add_library(md_sycl SHARED src/molecular_dynamics_sycl.cpp)
     add_sycl_to_target(TARGET md_sycl SOURCES src/molecular_dynamics_sycl.cpp)
+    target_compile_options(md_sycl PRIVATE "-fvisibility=hidden")
     target_link_libraries(main PRIVATE md_sycl)
     target_link_libraries(main_exam PRIVATE md_sycl)
 endif ()

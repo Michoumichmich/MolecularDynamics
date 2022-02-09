@@ -8,35 +8,35 @@ namespace sim {
 template<typename T> class sycl_backend : backend_interface<T> {
 
 public:
-    explicit sycl_backend(size_t size, const sycl::queue& queue = sycl::queue{}, bool maximise_occupancy = true);
+    EXPORT explicit sycl_backend(size_t size, const sycl::queue& queue = sycl::queue{}, bool maximise_occupancy = true);
 
-    void set_speeds(const std::vector<coordinate<T>>& speeds, const configuration<T>& config) override;
+    void set_speeds(const std::vector<coordinate<T>>& speeds, const configuration<T>& config) OPT_OVERRIDE;
 
-    void set_particles(const std::vector<coordinate<T>>& particules, const configuration<T>& config) override;
+    void set_particles(const std::vector<coordinate<T>>& particules, const configuration<T>& config) OPT_OVERRIDE;
 
-    [[nodiscard]] inline size_t get_particles_count() const override { return size_; }
+    [[nodiscard]] inline size_t get_particles_count() const OPT_OVERRIDE { return size_; }
 
-    void randinit_momentums(T min, T max) override;
+    void randinit_momentums(T min, T max) OPT_OVERRIDE;
 
-    void store_particles_coordinates(pdb_writer& writer, size_t i, T temp, T epot) const override;
+    void store_particles_coordinates(pdb_writer& writer, size_t i, T temp, T epot) const OPT_OVERRIDE;
 
-    [[nodiscard]] T get_momentums_squared_norm() const override;
+    [[nodiscard]] T get_momentums_squared_norm() const OPT_OVERRIDE;
 
-    void apply_multiplicative_correction_to_momentums(T coeff) override;
+    void apply_multiplicative_correction_to_momentums(T coeff) OPT_OVERRIDE;
 
-    void center_kinetic_momentums() override;
+    void center_kinetic_momentums() OPT_OVERRIDE;
 
-    [[nodiscard]] coordinate<T> mean_kinetic_momentum() const override;
+    [[nodiscard]] coordinate<T> mean_kinetic_momentum() const OPT_OVERRIDE;
 
-    void run_velocity_verlet(const configuration<T>& config) override;
+    void run_velocity_verlet(const configuration<T>& config) OPT_OVERRIDE;
 
-    void update_lennard_jones_field(const configuration<T>& config) override;
+    void update_lennard_jones_field(const configuration<T>& config) OPT_OVERRIDE;
 
     /**
      * The SYCL backend does not recompute these values systematically, so we'll have to do it. Reductions in SYCL are messy.
      * @return
      */
-    [[nodiscard]] std::tuple<coordinate<T>, T> get_last_lennard_jones_metrics() const override;
+    [[nodiscard]] std::tuple<coordinate<T>, T> get_last_lennard_jones_metrics() const OPT_OVERRIDE;
 
 private:
     T reduce_energies() const;

@@ -60,10 +60,11 @@ public:
         domains = std::vector<std::vector<index_t>>(get_domains_count());
 
         /* Updatind the domains */
-        for (index_t i = 0; i < coordinates_size; ++i) {
+        for (size_t i = 0; i < coordinates_size; ++i) {
             auto c = coordinates[i];
             const auto domain_id = linearize(bind_coordinate_to_domain(c));
-            domains[domain_id].push_back(i);
+            //sim::internal::assume(domain_id >= 0);
+            domains[(unsigned) domain_id].push_back(i);
         }
 
         /* Reset counter and debug info */
@@ -89,12 +90,12 @@ public:
         iters_since_last_update++;
 
         const auto num_domains = static_cast<index_t>(domains.size());
-        internal::assume(num_domains == get_domains_count());
+        //internal::assume(domains.size() == get_domains_count());
 
         /* Runs the domains in parallel. Each OMP thread has it's owe particle buffer */
 #pragma omp parallel for default(none) shared(particles, kernel, num_domains, particles_buffer, domain_count, max_, min_) schedule(dynamic)   // Dynamic bc unequal work
         for (index_t current_domain_id = 0; current_domain_id < num_domains; ++current_domain_id) {
-            auto& tls_buf = particles_buffer[omp_get_thread_num()];
+            auto& tls_buf = particles_buffer[(unsigned) omp_get_thread_num()];
             const auto domain_pos = delinearize(current_domain_id);
 
             index_t n_neighbors = 0;
@@ -116,9 +117,10 @@ public:
                 }
 
                 const index_t neighbor_linear_id = linearize(neighbor_pos);
-                internal::assume(neighbor_linear_id >= 0 && neighbor_linear_id < num_domains);
-                neighbors_domains_config[n_neighbors].first = neighbor_linear_id;
-                neighbors_domains_config[n_neighbors].second = neighbor_delta;
+                //internal::assume(neighbor_linear_id >= 0 && neighbor_linear_id < num_domains);
+                //internal::assume(n_neighbors >= 0);
+                neighbors_domains_config[(unsigned) n_neighbors].first = neighbor_linear_id;
+                neighbors_domains_config[(unsigned) n_neighbors].second = neighbor_delta;
                 ++n_neighbors;
             }
 
@@ -128,14 +130,19 @@ public:
             for (const auto& neighbor: neighbors_domains_config) {
                 const coordinate<T> neighbor_delta = neighbor.second;
                 const index_t neighbor_domain_id = neighbor.first;
-                for (const index_t& neighbor_particle_id: domains[neighbor_domain_id]) { tls_buf.template emplace_back(particles[neighbor_particle_id] + neighbor_delta); }
+                //internal::assume(neighbor_domain_id >= 0);
+                for (const index_t& neighbor_particle_id: domains[(unsigned) neighbor_domain_id]) {
+                    //internal::assume(neighbor_particle_id >= 0);
+                    tls_buf.template emplace_back(particles[(unsigned) neighbor_particle_id] + neighbor_delta);
+                }
             }
 
             /* Loop over current domain */
             for (const index_t& current_particle_id: domains[current_domain_id]) {
-                const auto current_particle = particles[current_particle_id];
+                //internal::assume(current_particle_id >= 0);
+                const auto current_particle = particles[static_cast<unsigned>(current_particle_id)];
                 //#pragma force vectorize ivdep?
-                for (const auto& other_particle: tls_buf) { kernel(current_particle_id, current_particle, other_particle); }
+                for (const auto& other_particle: tls_buf) { kernel(static_cast<unsigned>(current_particle_id), current_particle, other_particle); }
             }
         }
     }
@@ -145,7 +152,7 @@ private:
      * Returns the total number of domains (ie. across all the dimensions)
      * @return
      */
-    [[nodiscard]] inline constexpr index_t get_domains_count() const { return domain_count.x() * domain_count.y() * domain_count.z(); }
+    [[nodiscard]] inline constexpr size_t get_domains_count() const { return domain_count.x() * domain_count.y() * domain_count.z(); }
 
     /**
      * Takes a 3D coordinate and linearizes it to a 1d identifier.
@@ -202,9 +209,9 @@ private:
     sycl::vec<index_t, 3> domain_count{};                                 // Deduced number of domains in each dimension
     mutable std::vector<std::vector<coordinate<T>>> particles_buffer{};   // Buffer used by the openMP implementation. We have OMP_NUM_THREADS buffers.
     mutable std::vector<std::vector<index_t>> domains{};                  // domain[i] contains the particle IDs that fall into this domain
-    size_t decompose_period_ = 1;                                         //
-    mutable size_t iters_since_last_update = 0;                           //
-    mutable size_t max_domain_size_cached = 0;                            // Caching the max domain size to avoid expensive computation.
+    int decompose_period_ = 1;                                            //
+    mutable int iters_since_last_update = 0;                              //
+    mutable int max_domain_size_cached = 0;                               // Caching the max domain size to avoid expensive computation.
 };
 
 

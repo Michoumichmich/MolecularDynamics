@@ -14,6 +14,13 @@
 #    include <sycl/sycl.hpp>
 #endif
 
+#define EXPORT __attribute__((visibility("default")))
+#ifdef DEBUG_INTERFACE
+#    define OPT_OVERRIDE override
+#else
+#    define OPT_OVERRIDE
+#endif
+
 
 namespace sim::internal {
 constexpr auto icbrt(unsigned x) {

@@ -163,7 +163,7 @@ template<typename T> void sycl_backend<T>::run_velocity_verlet(const configurati
 }
 
 template<typename T>
-sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue, bool maximise_occupancy)
+EXPORT sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue, bool maximise_occupancy)
     : q(queue), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), particule_energy_(size, q), tmp_buf_(size) {
 
     //    configs_.max_work_group_size = restrict_work_group_size(size, q);

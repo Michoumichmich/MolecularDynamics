@@ -43,10 +43,6 @@ template<typename T> struct configuration {
     bool store_lennard_jones_metrics = false;
 
 
-    /* Temperature Distrubution */
-    T distrib_min = 100;
-    T distrib_max = 140;
-
     /**
      * @return some string representing the current configuration (useful to make a file name)
      */
