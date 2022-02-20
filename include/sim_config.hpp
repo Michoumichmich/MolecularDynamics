@@ -35,10 +35,10 @@ template<typename T> struct configuration {
     [[no_unique_address]] const coordinate<T> domain_mins{-20, -20, -20};   //
     [[no_unique_address]] const coordinate<T> domain_maxs{20, 20, 20};      //
     [[no_unique_address]] const coordinate<T> domain_widths{4, 4, 4};       //
-    [[no_unique_address]] const int decompose_periodicity = 100;            //
+    [[no_unique_address]] const unsigned decompose_periodicity = 100;       //
 
     /* PDB Out settings */
-    [[no_unique_address]] const int iter_per_frame = 100;                                      // Sets the store prediodicity.
+    [[no_unique_address]] const unsigned iter_per_frame = 100;                                 // Sets the store prediodicity.
     [[no_unique_address]] const std::string out_file = "unnamed_"s + config_hash() + ".pdb";   // Set an empty name to not save the result.
     [[no_unique_address]] const bool store_lennard_jones_metrics = false;
 

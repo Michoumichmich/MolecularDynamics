@@ -9,16 +9,16 @@ if (NOT CMAKE_BUILD_TYPE)
             FORCE)
 endif (NOT CMAKE_BUILD_TYPE)
 
-set(WARNINGS "-Wall -Wextra -Wshadow -Wdouble-promotion -Wuninitialized -Wsign-conversion -Wsign-promo -Wredundant-decls -Winit-self -Wmissing-include-dirs -Wdisabled-optimization -Wctor-dtor-privacy")
+set(WARNINGS "-Wall -Wextra -Wshadow -Wdouble-promotion -Wuninitialized -Wsign-promo -Wredundant-decls -Winit-self -Wmissing-include-dirs -Wdisabled-optimization -Wctor-dtor-privacy")#-Wsign-conversion
 set(DISABLED_WARNINGS "-Wno-assume -Wno-unused-command-line-argument -Wno-tautological-constant-compare -Wno-unknown-warning-option -Wno-linker-warnings -Wno-nonportable-include-path")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -fomit-frame-pointer -march=native -mtune=native -s ${DISABLED_WARNINGS} -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined ${WARNINGS} ${DISABLED_WARNINGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "-dead_strip")
 
 if (APPLE)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Xpreprocessor -fopenmp -I/usr/local/include -L/usr/local/lib -lomp")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xpreprocessor -fopenmp -I/usr/local/include -L/usr/local/lib -lomp")
 else ()
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 endif ()
 
 #Flags for DPC++. For hipSYCL use -DHIPSYCL_TARGETS=omp;cuda:sm_xx;...

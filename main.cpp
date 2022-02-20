@@ -12,7 +12,7 @@ using namespace std::string_literals;
 
 template<typename T> void run_example(size_t n, const std::vector<sim::coordinate<T>>& coordinates, sim::configuration<T> config = {}) {
     std::cout << config << std::endl;
-
+    //static_assert(sizeof(sim::coordinate<T>) == 4 * sizeof(T));
     auto run = [&](auto simulation) mutable {
         constexpr int print_periodicity = 100;
         for (size_t i = 0; i < n; ++i) {

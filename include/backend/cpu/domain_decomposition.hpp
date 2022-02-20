@@ -60,7 +60,7 @@ public:
         domains = std::vector<std::vector<index_t>>(get_domains_count());
 
         /* Updatind the domains */
-        for (size_t i = 0; i < coordinates_size; ++i) {
+        for (index_t i = 0; i < coordinates_size; ++i) {
             auto c = coordinates[i];
             const auto domain_id = linearize(bind_coordinate_to_domain(c));
             //sim::internal::assume(domain_id >= 0);
@@ -83,7 +83,7 @@ public:
      */
     template<int n_syms, typename func> inline void run_kernel_on_domains(std::vector<coordinate<T>>& particles, func&& kernel) const noexcept {
         /* Ensuring the particle buffers are large enough to be used without realloc */
-        for (auto& buf: particles_buffer) { buf.reserve(n_syms * max_domain_size_cached); }
+        for (auto& buf: particles_buffer) { buf.reserve(static_cast<unsigned>(n_syms * max_domain_size_cached)); }
 
         /* Eventually update the domains if that was not done in a while */
         if (iters_since_last_update > decompose_period_ || domains.empty()) { update_domains(particles); }
@@ -138,7 +138,7 @@ public:
             }
 
             /* Loop over current domain */
-            for (const index_t& current_particle_id: domains[current_domain_id]) {
+            for (const index_t& current_particle_id: domains[(unsigned) current_domain_id]) {
                 //internal::assume(current_particle_id >= 0);
                 const auto current_particle = particles[static_cast<unsigned>(current_particle_id)];
                 //#pragma force vectorize ivdep?
@@ -200,7 +200,7 @@ private:
      */
     [[nodiscard]] inline index_t max_domain_size(std::vector<coordinate<T>>& coordinates) const noexcept {
         std::vector<index_t> counts(get_domains_count(), 0);
-        for (auto& c: coordinates) { ++counts[linearize(bind_coordinate_to_domain(c))]; }
+        for (auto& c: coordinates) { ++counts[(unsigned) linearize(bind_coordinate_to_domain(c))]; }
         return *std::max_element(counts.begin(), counts.end());
     }
 

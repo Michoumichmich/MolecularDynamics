@@ -137,7 +137,7 @@ template<typename T, template<typename> class backend> EXPORT void molecular_dyn
 
     constexpr static double aging_coeff = 0.01;
     double prev_energy = total_energy_;
-    total_energy_ = kinetic_energy_ + lennard_jones_energy_;
+    total_energy_ = static_cast<double>(kinetic_energy_ + lennard_jones_energy_);
     avg_delta_energy_ = ((total_energy_ - prev_energy) * aging_coeff + avg_delta_energy_) / (1 + aging_coeff);
 }
 

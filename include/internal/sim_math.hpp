@@ -21,7 +21,10 @@ template<int N> static inline constexpr std::array<sycl::vec<int, 3U>, N> get_sy
         constexpr int delta = n / 2;
         for (int i = -delta; i <= delta; ++i) {
             for (int j = -delta; j <= delta; ++j) {
-                for (int k = -delta; k <= delta; ++k) { out[n * n * (i + delta) + n * (j + delta) + (k + delta)] = sycl::vec<int, 3U>(i, j, k); }
+                for (int k = -delta; k <= delta; ++k) {
+                    int linear_idx = n * n * (i + delta) + n * (j + delta) + (k + delta);
+                    out[static_cast<unsigned>(linear_idx)] = sycl::vec<int, 3U>(i, j, k);
+                }
             }
         }
         return out;
