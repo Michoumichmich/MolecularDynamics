@@ -53,16 +53,12 @@ include_directories(include)
 add_executable(main main.cpp)
 add_sycl_to_target(TARGET main SOURCES main.cpp)
 
-add_executable(main_exam main_exam.cpp)
-add_sycl_to_target(TARGET main_exam SOURCES main_exam.cpp)
-
 # OMP BE
 add_library(md_cpu SHARED src/molecular_dynamics_cpu.cpp)
 add_sycl_to_target(TARGET md_cpu SOURCES src/molecular_dynamics_cpu.cpp)
 target_compile_options(md_cpu PRIVATE "-fvisibility=hidden")
 
 target_link_libraries(main PRIVATE md_cpu)
-target_link_libraries(main_exam PRIVATE md_cpu)
 
 # SYCL BE
 if (SYCL)
@@ -71,7 +67,6 @@ if (SYCL)
     add_sycl_to_target(TARGET md_sycl SOURCES src/molecular_dynamics_sycl.cpp)
     target_compile_options(md_sycl PRIVATE "-fvisibility=hidden")
     target_link_libraries(main PRIVATE md_sycl)
-    target_link_libraries(main_exam PRIVATE md_sycl)
 endif ()
 
 include(FetchContent)
