@@ -1,10 +1,10 @@
 add_executable(benchmark_lennard_jones benchmarks/benchmark_lennard_jones.cpp)
 add_sycl_to_target(TARGET benchmark_lennard_jones SOURCES benchmarks/benchmark_lennard_jones.cpp)
-target_link_libraries(benchmark_lennard_jones PRIVATE benchmark::benchmark)
+target_link_libraries(benchmark_lennard_jones PRIVATE benchmark::benchmark benchmark::benchmark_main)
 target_link_libraries(benchmark_lennard_jones PRIVATE md_cpu)
 target_link_libraries(benchmark_lennard_jones PRIVATE md_sycl)
 
 add_executable(benchmark_decomposition benchmarks/benchmark_decomposition.cpp)
 add_sycl_to_target(TARGET benchmark_decomposition SOURCES benchmarks/benchmark_decomposition.cpp)
-target_link_libraries(benchmark_decomposition PRIVATE benchmark::benchmark)
+target_link_libraries(benchmark_decomposition PRIVATE benchmark::benchmark benchmark::benchmark_main)
 target_link_libraries(benchmark_decomposition PRIVATE md_cpu)
