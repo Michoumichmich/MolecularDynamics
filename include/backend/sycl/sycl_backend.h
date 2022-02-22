@@ -55,11 +55,8 @@ public:
      * To avoid calling the SYCL runtime too much in a hot path
      */
     struct kernel_configs {
-        size_t max_work_group_size;           //
-        size_t max_work_groups_lennard_1;     //
-        size_t max_work_groups_lennard_27;    //
-        size_t max_work_groups_lennard_125;   //
-        size_t max_reduction_size;            //
+        size_t max_work_group_size;   //
+        size_t max_reduction_size;    //
     };
 
 private:
