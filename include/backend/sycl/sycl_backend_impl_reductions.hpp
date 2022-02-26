@@ -1,7 +1,6 @@
 #pragma once
 #include "backend/sycl/sycl_backend.h"
 
-
 template<typename T> coordinate<T> sycl_backend<T>::mean_kinetic_momentum() const {
     coordinate<T> mean{};   // Sum of vi * mi;
     {
@@ -18,7 +17,7 @@ template<typename T> coordinate<T> sycl_backend<T>::mean_kinetic_momentum() cons
              auto reduction_y = sycl::reduction(y_reduction_buffer, cgh, sycl::plus<>{});
              auto reduction_z = sycl::reduction(z_reduction_buffer, cgh, sycl::plus<>{});
 #endif
-             cgh.parallel_for(compute_range_size(size_, configs_.max_reduction_size), reduction_x, reduction_y, reduction_z,   //
+             cgh.parallel_for(compute_range_size(size_, max_reduction_size), reduction_x, reduction_y, reduction_z,   //
                               [size = size_, momentums = momentums_.get()](sycl::nd_item<1> it, auto& x, auto& y, auto& z) {
                                   const auto i = it.get_global_linear_id();
                                   if (i >= size) return;
@@ -48,7 +47,7 @@ template<typename T> coordinate<T> sycl_backend<T>::compute_error_lennard_jones(
              auto reduction_y = sycl::reduction(y_reduction_buffer, cgh, sycl::plus<>{});
              auto reduction_z = sycl::reduction(z_reduction_buffer, cgh, sycl::plus<>{});
 #endif
-             cgh.parallel_for(compute_range_size(size_, configs_.max_reduction_size), reduction_x, reduction_y, reduction_z,   //
+             cgh.parallel_for(compute_range_size(size_, max_reduction_size), reduction_x, reduction_y, reduction_z,   //
                               [size = size_, forces = forces_.get()](sycl::nd_item<1> it, auto& x, auto& y, auto& z) {
                                   const auto i = it.get_global_linear_id();
                                   if (i >= size) return;
@@ -73,7 +72,7 @@ template<typename T> T sycl_backend<T>::get_momentums_squared_norm() const {
 #else
              auto reduction_sum = sycl::reduction(sum_buffer, cgh, sycl::plus<>{});
 #endif
-             cgh.parallel_for(compute_range_size(size_, configs_.max_reduction_size), reduction_sum, [momentums = momentums_.get(), size_ = size_](sycl::nd_item<1> it, auto& red) {
+             cgh.parallel_for(compute_range_size(size_, max_reduction_size), reduction_sum, [momentums = momentums_.get(), size_ = size_](sycl::nd_item<1> it, auto& red) {
                  const auto i = it.get_global_linear_id();
                  if (i >= size_) return;
                  red.combine(sycl::dot(momentums[i], momentums[i]));
@@ -94,7 +93,7 @@ template<typename T> T sycl_backend<T>::reduce_energies() const {
              auto reduction_sum = sycl::reduction(sum_buffer, cgh, sycl::plus<>{});
 #endif
              cgh.parallel_for(   //
-                     compute_range_size(size_, configs_.max_reduction_size), reduction_sum, [energies = particule_energy_.get(), size_ = size_](sycl::nd_item<1> it, auto& red) {
+                     compute_range_size(size_, max_reduction_size), reduction_sum, [energies = particule_energy_.get(), size_ = size_](sycl::nd_item<1> it, auto& red) {
                          const auto i = it.get_global_linear_id();
                          if (i >= size_) return;
                          red.combine(energies[i]);

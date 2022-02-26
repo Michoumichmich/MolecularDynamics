@@ -25,9 +25,8 @@ static inline auto compute_range_size(size_t size, size_t work_group_size) {
 template<typename T, int n_sym> struct lennard_jones_kernel;
 
 template<typename T, int n_sym>
-static inline sycl::event update_lennard_jones_field_impl_sycl(                                                  //
-        sycl::queue& q, size_t size,                                                                             //
-        const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
+static inline sycl::event update_lennard_jones_field_impl_sycl(                                                                               //
+        sycl::queue& q, size_t size, const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
 
     return q.submit([&](sycl::handler& cgh) {
@@ -69,10 +68,8 @@ static inline sycl::event update_lennard_jones_field_impl_sycl(                 
 
 
 template<typename T>
-static inline sycl::event update_lennard_jones_field_dispatch_impl(                                              //
-        sycl::queue& q,                                                                                          //
-        size_t size, const typename sycl_backend<T>::kernel_configs& configs,                                    //
-        const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
+static inline sycl::event update_lennard_jones_field_dispatch_impl(                                                                           //
+        sycl::queue& q, size_t size, const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
 
     if (config.n_symetries == 1) {
@@ -88,7 +85,7 @@ static inline sycl::event update_lennard_jones_field_dispatch_impl(             
 
 
 template<typename T> void sycl_backend<T>::update_lennard_jones_field(const configuration<T>& config) {
-    update_lennard_jones_field_dispatch_impl(q, size_, configs_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, sycl::event{}).wait();
+    update_lennard_jones_field_dispatch_impl(q, size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, sycl::event{}).wait();
 }
 
 
@@ -135,7 +132,7 @@ template<typename T> void sycl_backend<T>::run_velocity_verlet(const configurati
                          });
     });
 
-    auto evt3 = update_lennard_jones_field_dispatch_impl(q, size_, configs_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt2);
+    auto evt3 = update_lennard_jones_field_dispatch_impl(q, size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt2);
 
     // Last step: update momentums given new forces
     auto evt4 = q.submit([&](sycl::handler& cgh) {
@@ -146,19 +143,23 @@ template<typename T> void sycl_backend<T>::run_velocity_verlet(const configurati
                          });
     });
 
-    auto evt5 = update_lennard_jones_field_dispatch_impl(q, size_, configs_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt4);
+    auto evt5 = update_lennard_jones_field_dispatch_impl(q, size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt4);
     evt5.wait_and_throw();
 }
 
 template<typename T>
-EXPORT sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue, bool maximise_occupancy)
+EXPORT sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue)
     : q(queue), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), particule_energy_(size, q), tmp_buf_(size) {
-    const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
-    auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
-    if (maximise_occupancy && size_ < max_compute_units * max_work_group_size) {
-        max_work_group_size = std::min(max_work_group_size, std::max(1UL, (size + max_compute_units - 1) / max_compute_units));
+
+    max_reduction_size = 256U;
+
+#ifdef SYCL_IMPLEMENTATION_ONEAPI
+    if (q.get_device().is_cpu()) {
+        max_reduction_size = std::min(64UL, max_reduction_size);
+    } else if (q.get_device().is_gpu()) {
+        max_reduction_size = std::min(512UL, max_reduction_size);
     }
-    configs_.max_reduction_size = std::min(64UL, configs_.max_work_group_size);
+#endif
 }
 
 template<typename T> void sycl_backend<T>::set_particles(const std::vector<coordinate<T>>& particules, const configuration<T>&) {
