@@ -97,9 +97,58 @@ template<typename T> void sycl_backend<T>::randinit_momentums(T min, T max) {
 }
 
 template<typename T> void sycl_backend<T>::center_kinetic_momentums() {
-    auto mean = mean_kinetic_momentum();
-    q.parallel_for(sycl::launch::max_occupancy, [mean = mean, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
-         occupancy_range_adapter(size_, it, [&](size_t i) { momentums[i] -= mean; });
+    using local_atomic_ref = sycl::atomic_ref<T, sycl::memory_order::relaxed, sycl::memory_scope::work_group, sycl::access::address_space::local_space>;
+    using global_atomic_ref = sycl::atomic_ref<T, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>;
+    using counter_atomic_ref = sycl::atomic_ref<int, sycl::memory_order::relaxed, sycl::memory_scope::device, sycl::access::address_space::global_space>;
+    auto global_reducer_b = sycl::buffer<coordinate<T>>(1);
+    auto global_counter_b = sycl::buffer<int>(1);
+
+    q.submit([&](sycl::handler& cgh) {
+         /* SYCL Boilerplate for a parallel reduction */
+         auto local_reducer = sycl::accessor<coordinate<T>, 1, sycl::access::mode::read_write, sycl::access::target::local>(1, cgh);
+         auto global_reducer = sycl::accessor{global_reducer_b, cgh};
+         auto barrier_counter = sycl::accessor{global_counter_b, cgh};
+
+         /* Launching the rangeless parallel_for kernel */
+         cgh.parallel_for(sycl::launch::cooperative, [=, size = size_, momentums = momentums_.get()](sycl::nd_item<1> item) {
+             /* Computing the barycenter :  Local reduction */
+             {
+                 auto thread_reducer = coordinate<T>{};
+                 /* per-thread reduction */
+                 occupancy_range_adapter(size, item, [&](size_t i) { thread_reducer += momentums[i]; });
+
+                 /* Work-group-wide reduction into local memory */
+                 local_atomic_ref{local_reducer[0].x()} += thread_reducer.x();
+                 local_atomic_ref{local_reducer[0].y()} += thread_reducer.y();
+                 local_atomic_ref{local_reducer[0].z()} += thread_reducer.z();
+             }
+
+             /* Waiting for all the work-items to do the reduction. */
+             item.barrier();
+
+             /* Device-wide reduction */
+             if (item.get_local_id(0) == 0) {
+                 /* Reduce the work-group result into global memory */
+                 global_atomic_ref{global_reducer[0].x()} += local_atomic_ref{local_reducer[0].x()};
+                 global_atomic_ref{global_reducer[0].y()} += local_atomic_ref{local_reducer[0].y()};
+                 global_atomic_ref{global_reducer[0].z()} += local_atomic_ref{local_reducer[0].z()};
+
+                 /* Register the "leader" of each work-group on the barrier */
+                 counter_atomic_ref(barrier_counter[0])++;
+                 /* Device-wide Sync using a spinlock */
+                 while (counter_atomic_ref(barrier_counter[0]).load() != item.get_group_range(0)) {}
+
+                 /* Barried passed, we fetch the result, compute the average and store it into local memory */
+                 local_atomic_ref{local_reducer[0].x()} = global_atomic_ref{global_reducer[0].x()} / static_cast<T>(size);
+                 local_atomic_ref{local_reducer[0].y()} = global_atomic_ref{global_reducer[0].y()} / static_cast<T>(size);
+                 local_atomic_ref{local_reducer[0].z()} = global_atomic_ref{global_reducer[0].z()} / static_cast<T>(size);
+             }
+
+             /* Everyone waits untill average is available in local_reducer */
+             item.barrier();
+             /* Finally, we use the average to perform the centering */
+             occupancy_range_adapter(size, item, [&](size_t i) { momentums[i] -= local_reducer[0]; });
+         });
      }).wait();
 }
 
