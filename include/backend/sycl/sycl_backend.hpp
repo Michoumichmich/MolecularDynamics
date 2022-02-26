@@ -28,17 +28,16 @@ static inline auto compute_range_size(size_t size, size_t work_group_size) {
 template<typename T, int n_sym> struct lennard_jones_kernel;
 
 template<typename T, int n_sym>
-static inline sycl::event update_lennard_jones_field_impl_sycl(                                                  //
-        sycl::queue& q, size_t size, size_t work_group_size,                                                     //
-        const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
+static inline sycl::event update_lennard_jones_field_impl_sycl(                                                                               //
+        sycl::queue& q, size_t size, const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
 
     return q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(std::move(in_evt));
         cgh.parallel_for<lennard_jones_kernel<T, n_sym>>(   //
-                compute_range_size(size, work_group_size), [size = size, L = config.L, coordinates = coordinates, r_star = config.r_star, r_cut = config.r_cut, forces = forces,
-                                                            energies = energies, use_cutoff = config.use_cutoff, epsilon_star = config.epsilon_star](sycl::nd_item<1> item) {
-                    const auto i = item.get_global_linear_id();
+                sycl::range(size), [size = size, L = config.L, coordinates = coordinates, r_star = config.r_star, r_cut = config.r_cut, forces = forces, energies = energies,
+                                    use_cutoff = config.use_cutoff, epsilon_star = config.epsilon_star](sycl::item<1> item) {
+                    const auto i = item.get_linear_id();
                     if (i >= size) return;
                     auto this_particule_energy = T{};
                     auto this_particule_force = coordinate<T>{};
@@ -71,18 +70,16 @@ static inline sycl::event update_lennard_jones_field_impl_sycl(                 
 
 
 template<typename T>
-static inline sycl::event update_lennard_jones_field_dispatch_impl(                                              //
-        sycl::queue& q,                                                                                          //
-        size_t size, const typename sycl_backend<T>::kernel_configs& configs,                                    //
-        const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
+static inline sycl::event update_lennard_jones_field_dispatch_impl(                                                                           //
+        sycl::queue& q, size_t size, const coordinate<T>* __restrict coordinates, coordinate<T>* __restrict forces, T* __restrict energies,   //
         const configuration<T>& config, sycl::event in_evt) {
 
     if (config.n_symetries == 1) {
-        return update_lennard_jones_field_impl_sycl<T, 1>(q, size, configs.max_work_groups_lennard_1, coordinates, forces, energies, config, in_evt);
+        return update_lennard_jones_field_impl_sycl<T, 1>(q, size, coordinates, forces, energies, config, in_evt);
     } else if (config.n_symetries == 27) {
-        return update_lennard_jones_field_impl_sycl<T, 27>(q, size, configs.max_work_groups_lennard_27, coordinates, forces, energies, config, in_evt);
+        return update_lennard_jones_field_impl_sycl<T, 27>(q, size, coordinates, forces, energies, config, in_evt);
     } else if (config.n_symetries == 125) {
-        return update_lennard_jones_field_impl_sycl<T, 125>(q, size, configs.max_work_groups_lennard_125, coordinates, forces, energies, config, in_evt);
+        return update_lennard_jones_field_impl_sycl<T, 125>(q, size, coordinates, forces, energies, config, in_evt);
     } else {
         throw std::runtime_error("Unsupported");
     }
@@ -90,7 +87,7 @@ static inline sycl::event update_lennard_jones_field_dispatch_impl(             
 
 
 template<typename T> void sycl_backend<T>::update_lennard_jones_field(const configuration<T>& config) {
-    update_lennard_jones_field_dispatch_impl(q, size_, configs_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, sycl::event{}).wait();
+    update_lennard_jones_field_dispatch_impl(q, size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, sycl::event{}).wait();
 }
 
 
@@ -103,17 +100,15 @@ template<typename T> void sycl_backend<T>::randinit_momentums(T min, T max) {
 
 template<typename T> void sycl_backend<T>::center_kinetic_momentums() {
     auto mean = mean_kinetic_momentum();
-    q.parallel_for(compute_range_size(size_, configs_.max_work_group_size), [mean = mean, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
-         const auto i = it.get_global_linear_id();
-         if (i >= size_) return;
+    q.parallel_for(sycl::range(size_), [mean = mean, size_ = size_, momentums = momentums_.get()](sycl::item<1> it) {
+         const auto i = it.get_linear_id();
          momentums[i] -= mean;
      }).wait();
 }
 
 template<typename T> void sycl_backend<T>::apply_multiplicative_correction_to_momentums(T coeff) {
-    q.parallel_for(compute_range_size(size_, configs_.max_work_group_size), [coeff = coeff, size_ = size_, momentums = momentums_.get()](sycl::nd_item<1> it) {
-         const auto i = it.get_global_linear_id();
-         if (i >= size_) return;
+    q.parallel_for(sycl::range(size_), [coeff = coeff, size_ = size_, momentums = momentums_.get()](sycl::item<1> it) {
+         const auto i = it.get_linear_id();
          momentums[i] *= coeff;
      }).wait();
 }
@@ -127,67 +122,47 @@ template<typename T> void sycl_backend<T>::store_particles_coordinates(pdb_write
 template<typename T> void sycl_backend<T>::run_velocity_verlet(const configuration<T>& config) {
     // First step: half step update of the momentums.
     auto evt = q.parallel_for(   //
-            compute_range_size(size_, configs_.max_work_group_size),
-            [size = size_, momentums = momentums_.get(), forces = forces_.get(), conversion_force = config.conversion_force, dt = config.dt](sycl::nd_item<1> it) {
-                const auto i = it.get_global_linear_id();
-                if (i >= size) return;
+            sycl::range(size_), [size = size_, momentums = momentums_.get(), forces = forces_.get(), conversion_force = config.conversion_force, dt = config.dt](sycl::item<1> it) {
+                const auto i = it.get_linear_id();
                 momentums[i] += conversion_force * forces[i] * dt / 2;
             });
 
     // Second step: update particules positions
     auto evt2 = q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(evt);
-        cgh.parallel_for(compute_range_size(size_, configs_.max_work_group_size),
-                         [size = size_, coordinates = coordinates_.get(), momentums = momentums_.get(), m_i = config.m_i, dt = config.dt](sycl::nd_item<1> it) {
-                             const auto i = it.get_global_linear_id();
-                             if (i >= size) return;
-                             coordinates[i] += dt * momentums[i] / m_i;
-                         });
+        cgh.parallel_for(sycl::range(size_), [size = size_, coordinates = coordinates_.get(), momentums = momentums_.get(), m_i = config.m_i, dt = config.dt](sycl::item<1> it) {
+            const auto i = it.get_linear_id();
+            coordinates[i] += dt * momentums[i] / m_i;
+        });
     });
 
-    auto evt3 = update_lennard_jones_field_dispatch_impl(q, size_, configs_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt2);
+    auto evt3 = update_lennard_jones_field_dispatch_impl(q, size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt2);
 
     // Last step: update momentums given new forces
     auto evt4 = q.submit([&](sycl::handler& cgh) {
         cgh.depends_on(evt3);
-        cgh.parallel_for(compute_range_size(size_, configs_.max_work_group_size),
-                         [size = size_, momentums = momentums_.get(), forces = forces_.get(), conversion_force = config.conversion_force, dt = config.dt](sycl::nd_item<1> it) {
-                             const auto i = it.get_global_linear_id();
-                             if (i >= size) return;
+        cgh.parallel_for(sycl::range(size_),
+                         [size = size_, momentums = momentums_.get(), forces = forces_.get(), conversion_force = config.conversion_force, dt = config.dt](sycl::item<1> it) {
+                             const auto i = it.get_linear_id();
                              momentums[i] += conversion_force * forces[i] * dt / 2;
                          });
     });
 
-    auto evt5 = update_lennard_jones_field_dispatch_impl(q, size_, configs_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt4);
+    auto evt5 = update_lennard_jones_field_dispatch_impl(q, size_, coordinates_.get(), forces_.get(), particule_energy_.get(), config, evt4);
     evt5.wait_and_throw();
 }
 
 template<typename T>
-EXPORT sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue, bool maximise_occupancy)
+EXPORT sycl_backend<T>::sycl_backend(size_t size, const sycl::queue& queue)
     : q(queue), size_(size), coordinates_(size, q), momentums_(size, q), forces_(size, q), particule_energy_(size, q), tmp_buf_(size) {
 
-    //    configs_.max_work_group_size = restrict_work_group_size(size, q);
-    //    configs_.max_work_groups_lennard_1 = restrict_work_group_size<lennard_jones_kernel<T, 1>>(size, q);
-    //    configs_.max_work_groups_lennard_27 = restrict_work_group_size<lennard_jones_kernel<T, 27>>(size, q);
-    //    configs_.max_work_groups_lennard_125 = restrict_work_group_size<lennard_jones_kernel<T, 125>>(size, q);
-
-    const auto max_compute_units = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_compute_units>()));
-    const auto max_work_group_size = std::max(1UL, std::min<size_t>(size, q.get_device().template get_info<sycl::info::device::max_work_group_size>()));
-    if (maximise_occupancy && size_ < max_compute_units * max_work_group_size) {
-        configs_.max_work_group_size = std::min(max_work_group_size, std::max(1UL, (size + max_compute_units - 1) / max_compute_units));
-    } else {
-        configs_.max_work_group_size = max_work_group_size;
-    }
-    configs_.max_work_groups_lennard_1 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 1>>(q));
-    configs_.max_work_groups_lennard_27 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 27>>(q));
-    configs_.max_work_groups_lennard_125 = std::min(configs_.max_work_group_size, max_work_groups_for_kernel<lennard_jones_kernel<T, 125>>(q));
-    configs_.max_reduction_size = configs_.max_work_group_size;
+    max_reduction_size = 256U;
 
 #ifdef SYCL_IMPLEMENTATION_ONEAPI
     if (q.get_device().is_cpu()) {
-        configs_.max_reduction_size = std::min(64UL, configs_.max_reduction_size);
+        max_reduction_size = std::min(64UL, max_reduction_size);
     } else if (q.get_device().is_gpu()) {
-        configs_.max_reduction_size = std::min(512UL, configs_.max_reduction_size);
+        max_reduction_size = std::min(512UL, max_reduction_size);
     }
 #endif
 }

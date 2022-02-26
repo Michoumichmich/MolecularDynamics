@@ -8,7 +8,7 @@ namespace sim {
 template<typename T> class sycl_backend : backend_interface<T> {
 
 public:
-    EXPORT explicit sycl_backend(size_t size, const sycl::queue& queue = sycl::queue{}, bool maximise_occupancy = true);
+    EXPORT explicit sycl_backend(size_t size, const sycl::queue& queue = sycl::queue{});
 
     void set_speeds(const std::vector<coordinate<T>>& speeds, const configuration<T>& config) OPT_OVERRIDE;
 
@@ -50,20 +50,11 @@ private:
     [[no_unique_address]] sycl_unique_device_ptr<T> particule_energy_;          // Lennard Jones Field
     [[no_unique_address]] mutable std::vector<coordinate<T>> tmp_buf_;          //
 
-public:
+private:
     /**
      * To avoid calling the SYCL runtime too much in a hot path
      */
-    struct kernel_configs {
-        size_t max_work_group_size;           //
-        size_t max_work_groups_lennard_1;     //
-        size_t max_work_groups_lennard_27;    //
-        size_t max_work_groups_lennard_125;   //
-        size_t max_reduction_size;            //
-    };
-
-private:
-    [[no_unique_address]] kernel_configs configs_;
+    [[no_unique_address]] size_t max_reduction_size;   //
 };
 
 
